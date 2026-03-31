@@ -1,6 +1,7 @@
 import type { CompletionLog, Quest, Stat, StorageKind, UserProfile } from '../types/domain';
 import { ProfileSummary } from '../features/stats/ProfileSummary';
 import { StatsOverview } from '../features/stats/StatsOverview';
+import { TodaySummary } from '../features/stats/TodaySummary';
 import { QuestList } from '../features/quests/QuestList';
 
 interface DashboardPageProps {
@@ -9,13 +10,14 @@ interface DashboardPageProps {
   quests: Quest[];
   completionLogs: CompletionLog[];
   storageKind: StorageKind | null;
-  showCompletedToday: boolean;
+  showCompletedCurrentPeriod: boolean;
   enableConfirmations: boolean;
   onCreateQuest: () => void;
   onEditQuest: (quest: Quest) => void;
   onCompleteQuest: (questId: string) => Promise<boolean>;
   onArchiveQuest: (questId: string) => Promise<boolean>;
   onDeleteQuest: (questId: string) => Promise<boolean>;
+  onRestoreQuest: (questId: string) => Promise<boolean>;
   onUpdateUsername: (username: string) => Promise<boolean>;
 }
 
@@ -25,13 +27,14 @@ export function DashboardPage({
   quests,
   completionLogs,
   storageKind,
-  showCompletedToday,
+  showCompletedCurrentPeriod,
   enableConfirmations,
   onCreateQuest,
   onEditQuest,
   onCompleteQuest,
   onArchiveQuest,
   onDeleteQuest,
+  onRestoreQuest,
   onUpdateUsername,
 }: DashboardPageProps) {
   return (
@@ -57,18 +60,25 @@ export function DashboardPage({
         onUpdateUsername={onUpdateUsername}
       />
 
+      <TodaySummary
+        profile={profile}
+        quests={quests}
+        completionLogs={completionLogs}
+      />
+
       <StatsOverview stats={stats} />
 
       <QuestList
         quests={quests}
         stats={stats}
         completionLogs={completionLogs}
-        showCompletedToday={showCompletedToday}
+        showCompletedCurrentPeriod={showCompletedCurrentPeriod}
         enableConfirmations={enableConfirmations}
         onComplete={onCompleteQuest}
         onEdit={onEditQuest}
         onArchive={onArchiveQuest}
         onDelete={onDeleteQuest}
+        onRestore={onRestoreQuest}
       />
     </div>
   );

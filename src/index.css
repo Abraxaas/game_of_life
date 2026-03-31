@@ -130,6 +130,13 @@ p {
   margin-bottom: 1rem;
 }
 
+.app-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
 .app-main {
   margin-top: 1.5rem;
 }
@@ -169,6 +176,11 @@ p {
 
 .muted-text {
   color: var(--text-muted);
+}
+
+.section-meta {
+  display: grid;
+  gap: 0.25rem;
 }
 
 .section-header {
@@ -339,6 +351,34 @@ p {
   gap: 0.9rem;
 }
 
+.today-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.today-card {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(84, 95, 90, 0.12);
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.today-card strong {
+  font-size: 1.85rem;
+  line-height: 1;
+}
+
+.today-card--accent {
+  background: linear-gradient(180deg, rgba(45, 106, 91, 0.12), rgba(255, 255, 255, 0.72));
+}
+
+.today-card__progress {
+  margin-top: 0.15rem;
+}
+
 .stat-card {
   background: rgba(255, 255, 255, 0.65);
   border: 1px solid rgba(84, 95, 90, 0.12);
@@ -393,6 +433,23 @@ p {
 
 .quest-section + .quest-section {
   margin-top: 1.35rem;
+}
+
+.filter-toolbar {
+  margin-bottom: 1.2rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.filter-toolbar__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) repeat(2, minmax(180px, 1fr));
+  gap: 0.9rem;
+}
+
+.filter-toolbar__actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .quest-section h3 {
@@ -464,6 +521,9 @@ p {
 }
 
 .empty-state {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: flex-start;
   padding: 1rem;
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius-lg);
@@ -543,6 +603,19 @@ p {
   font-size: 0.92rem;
 }
 
+.onboarding-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.onboarding-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.6rem;
+  color: var(--text-muted);
+}
+
 .form-error {
   color: var(--error);
   background: rgba(164, 76, 63, 0.08);
@@ -610,6 +683,13 @@ p {
   box-shadow: var(--shadow);
 }
 
+.toast__actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 .toast--success {
   border-color: rgba(46, 125, 88, 0.22);
 }
@@ -652,6 +732,7 @@ p {
 }
 
 @media (max-width: 1040px) {
+  .today-grid,
   .stats-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -672,12 +753,18 @@ p {
     flex-direction: column;
   }
 
+  .today-grid,
   .stats-grid,
+  .filter-toolbar__grid,
   .form-grid {
     grid-template-columns: 1fr;
   }
 
   .quest-card__actions {
+    justify-content: flex-start;
+  }
+
+  .filter-toolbar__actions {
     justify-content: flex-start;
   }
 
@@ -696,9 +783,47 @@ p {
     padding: 1rem;
   }
 
+  .page-tabs {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+
+  .tab-button {
+    white-space: nowrap;
+  }
+
+  .app-header .primary-button,
+  .app-header .secondary-button,
+  .hero .primary-button {
+    width: 100%;
+  }
+
+  .app-header__actions {
+    width: 100%;
+  }
+
+  .quest-card__actions {
+    width: 100%;
+  }
+
+  .quest-card__actions button {
+    width: 100%;
+  }
+
   .toast-viewport {
     right: 0.85rem;
     left: 0.85rem;
     width: auto;
+  }
+
+  .toast {
+    flex-direction: column;
+  }
+
+  .toast__actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }

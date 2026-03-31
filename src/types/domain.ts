@@ -1,6 +1,6 @@
 export type StatKey = string;
 
-export type QuestType = 'one_time' | 'daily';
+export type QuestType = 'one_time' | 'daily' | 'weekly' | 'monthly';
 export type QuestDifficulty = 'easy' | 'medium' | 'hard';
 export type AppTheme = 'light';
 export type ToastTone = 'success' | 'error' | 'info';
@@ -30,7 +30,7 @@ export interface Quest {
   isArchived: boolean;
   createdAt: string;
   updatedAt: string;
-  completedToday: boolean;
+  completedInPeriod: boolean;
   lastCompletedAt?: string;
   timesCompleted: number;
 }
@@ -56,8 +56,9 @@ export interface UserProfile {
 export interface AppSettings {
   id: string;
   theme: AppTheme;
-  showCompletedToday: boolean;
+  showCompletedCurrentPeriod: boolean;
   enableConfirmations: boolean;
+  hasSeenOnboarding: boolean;
   lastBackupAt?: string;
 }
 
@@ -74,6 +75,8 @@ export interface ToastMessage {
   id: string;
   tone: ToastTone;
   text: string;
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
 export interface StreakSummary {

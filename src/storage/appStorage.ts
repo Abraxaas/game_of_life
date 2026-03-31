@@ -9,13 +9,18 @@ import type {
   AppDataSnapshot,
   AppSettings,
   Quest,
+  QuestDifficulty,
   Stat,
   StorageInitResult,
   StorageKind,
   UserProfile,
 } from '../types/domain';
-import { isToday } from '../utils/date';
 import { createId } from '../utils/id';
+import {
+  isQuestCompletedInCurrentPeriod,
+  normalizeQuestDifficulty,
+  normalizeQuestType,
+} from '../utils/quests';
 import { calculateLevelProgress } from '../utils/xp';
 import {
   hasIndexedDbSupport,
@@ -34,6 +39,14 @@ interface StorageAdapter {
 
 function cloneSnapshot(snapshot: AppDataSnapshot) {
   return structuredClone(snapshot);
+}
+
+interface LegacyQuestSnapshot extends Partial<Quest> {
+  completedToday?: boolean;
+}
+
+interface LegacyAppSettingsSnapshot extends Partial<AppSettings> {
+  showCompletedToday?: boolean;
 }
 
 function rebuildStat(
@@ -56,11 +69,26 @@ function rebuildStat(
   };
 }
 
-function rebuildQuest(quest: Quest): Quest {
+function rebuildQuest(quest: LegacyQuestSnapshot): Quest {
+  const nowIso = new Date().toISOString();
+  const difficulty: QuestDifficulty = normalizeQuestDifficulty(quest.difficulty);
+  const type = normalizeQuestType(quest.type);
+
   return {
-    ...quest,
-    xpReward: XP_BY_DIFFICULTY[quest.difficulty],
-    completedToday: isToday(quest.lastCompletedAt),
+    id: quest.id ?? createId(),
+    title: quest.title?.trim() || 'Без названия',
+    description: quest.description?.trim() || undefined,
+    statKey: quest.statKey ?? 'discipline',
+    type,
+    difficulty,
+    xpReward: XP_BY_DIFFICULTY[difficulty],
+    rewardText: quest.rewardText?.trim() || undefined,
+    isArchived: Boolean(quest.isArchived),
+    createdAt: quest.createdAt ?? nowIso,
+    updatedAt: quest.updatedAt ?? nowIso,
+    completedInPeriod: isQuestCompletedInCurrentPeriod(type, quest.lastCompletedAt),
+    lastCompletedAt: quest.lastCompletedAt,
+    timesCompleted: Math.max(0, quest.timesCompleted ?? 0),
   };
 }
 
@@ -77,10 +105,18 @@ function buildProfile(stats: Stat[], currentProfile?: UserProfile): UserProfile 
   };
 }
 
-function buildSettings(settings?: Partial<AppSettings>): AppSettings {
+function buildSettings(settings?: LegacyAppSettingsSnapshot): AppSettings {
+  const showCompletedCurrentPeriod =
+    settings?.showCompletedCurrentPeriod ??
+    settings?.showCompletedToday ??
+    DEFAULT_APP_SETTINGS.showCompletedCurrentPeriod;
+
   return {
     ...DEFAULT_APP_SETTINGS,
     ...settings,
+    showCompletedCurrentPeriod,
+    hasSeenOnboarding:
+      settings?.hasSeenOnboarding ?? DEFAULT_APP_SETTINGS.hasSeenOnboarding,
     id: DEFAULT_APP_SETTINGS.id,
   };
 }

@@ -2,13 +2,38 @@ export function getNowIso() {
   return new Date().toISOString();
 }
 
+function toDate(value: string | Date) {
+  return value instanceof Date ? new Date(value) : new Date(value);
+}
+
 export function toDateKey(value: string | Date) {
-  const date = value instanceof Date ? value : new Date(value);
+  const date = toDate(value);
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, '0');
   const day = `${date.getDate()}`.padStart(2, '0');
 
   return `${year}-${month}-${day}`;
+}
+
+export function toMonthKey(value: string | Date) {
+  const date = toDate(value);
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+
+  return `${year}-${month}`;
+}
+
+export function toWeekKey(value: string | Date) {
+  const date = toDate(value);
+  const normalized = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+  );
+  const dayOfWeek = (normalized.getDay() + 6) % 7;
+  normalized.setDate(normalized.getDate() - dayOfWeek);
+
+  return toDateKey(normalized);
 }
 
 export function isToday(value?: string) {
@@ -33,6 +58,22 @@ export function isSameDay(left?: string, right?: string) {
   }
 
   return toDateKey(left) === toDateKey(right);
+}
+
+export function isSameWeek(left?: string, right?: string) {
+  if (!left || !right) {
+    return false;
+  }
+
+  return toWeekKey(left) === toWeekKey(right);
+}
+
+export function isSameMonth(left?: string, right?: string) {
+  if (!left || !right) {
+    return false;
+  }
+
+  return toMonthKey(left) === toMonthKey(right);
 }
 
 export function formatDateTime(value?: string) {

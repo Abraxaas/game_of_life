@@ -1,5 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { DIFFICULTY_LABELS, XP_BY_DIFFICULTY } from '../../shared/constants';
+import {
+  DIFFICULTY_LABELS,
+  QUEST_TYPE_LABELS,
+  XP_BY_DIFFICULTY,
+} from '../../shared/constants';
 import type { Quest, QuestFormValues, Stat } from '../../types/domain';
 import { Modal } from '../../components/Modal';
 
@@ -35,6 +39,14 @@ export function QuestModal({
   const [values, setValues] = useState<QuestFormValues>(getInitialValues(stats, quest));
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string>();
+  const questTypeHint =
+    values.type === 'daily'
+      ? 'Станет снова активным на следующий день.'
+      : values.type === 'weekly'
+        ? 'Станет снова активным на следующей неделе.'
+        : values.type === 'monthly'
+          ? 'Станет снова активным в следующем месяце.'
+          : 'Закроется после первого выполнения и уйдет в архив.';
 
   useEffect(() => {
     if (open) {
@@ -132,8 +144,10 @@ export function QuestModal({
                 }))
               }
             >
-              <option value="daily">Ежедневный</option>
-              <option value="one_time">Разовый</option>
+              <option value="daily">{QUEST_TYPE_LABELS.daily}</option>
+              <option value="weekly">{QUEST_TYPE_LABELS.weekly}</option>
+              <option value="monthly">{QUEST_TYPE_LABELS.monthly}</option>
+              <option value="one_time">{QUEST_TYPE_LABELS.one_time}</option>
             </select>
           </label>
         </div>
@@ -174,7 +188,7 @@ export function QuestModal({
         </div>
 
         <p className="helper-text">
-          За выполнение будет начислено {XP_BY_DIFFICULTY[values.difficulty]} опыта.
+          За выполнение будет начислено {XP_BY_DIFFICULTY[values.difficulty]} опыта. {questTypeHint}
         </p>
 
         {formError ? <p className="form-error">{formError}</p> : null}

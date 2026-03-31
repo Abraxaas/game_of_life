@@ -14,12 +14,18 @@ import type {
   QuestFormValues,
   StorageKind,
   ToastMessage,
+  ToastTone,
 } from '../types/domain';
 import { UI_PAGE_STORAGE_KEY, XP_BY_DIFFICULTY } from '../shared/constants';
 import { initializeStorage, normalizeSnapshot, persistSnapshot } from '../storage/appStorage';
 import { createSeedSnapshot } from '../storage/seed';
 import { validateImportedSnapshot } from '../utils/importValidation';
 import { createId } from '../utils/id';
+import {
+  canRestoreQuest,
+  isQuestCompletedInCurrentPeriod,
+  isRecurringQuestType,
+} from '../utils/quests';
 
 interface ExportPayload {
   fileName: string;
@@ -39,11 +45,31 @@ interface AppContextValue {
   updateQuest: (questId: string, values: QuestFormValues) => Promise<boolean>;
   archiveQuest: (questId: string) => Promise<boolean>;
   deleteQuest: (questId: string) => Promise<boolean>;
+  restoreQuest: (questId: string) => Promise<boolean>;
   completeQuest: (questId: string) => Promise<boolean>;
   updateProfileName: (username: string) => Promise<boolean>;
   updateSettings: (patch: Partial<AppSettings>) => Promise<boolean>;
   exportSnapshot: () => Promise<ExportPayload | null>;
   importSnapshot: (rawJson: string) => Promise<boolean>;
+}
+
+interface PushToastOptions {
+  actionLabel?: string;
+  onAction?: () => void;
+  durationMs?: number;
+}
+
+interface CommitSnapshotOptions {
+  successMessage?: string;
+  errorMessage?: string;
+  undoable?: boolean;
+  undoSuccessMessage?: string;
+}
+
+interface UndoEntry {
+  token: string;
+  snapshot: AppDataSnapshot;
+  successMessage: string;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -70,6 +96,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [storageWarning, setStorageWarning] = useState<string>();
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const snapshotRef = useRef<AppDataSnapshot | null>(null);
+  const undoRef = useRef<UndoEntry | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,9 +142,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  function pushToast(text: string, tone: ToastMessage['tone']) {
+  function pushToast(
+    text: string,
+    tone: ToastTone,
+    options?: PushToastOptions,
+  ) {
     const toastId = createId();
-    const nextToast: ToastMessage = { id: toastId, text, tone };
+    const nextToast: ToastMessage = {
+      id: toastId,
+      text,
+      tone,
+      actionLabel: options?.actionLabel,
+      onAction: options?.onAction,
+    };
 
     setToasts((currentToasts) => [...currentToasts, nextToast]);
 
@@ -125,7 +162,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setToasts((currentToasts) =>
         currentToasts.filter((toast) => toast.id !== toastId),
       );
-    }, 4200);
+    }, options?.durationMs ?? (options?.actionLabel ? 7000 : 4200));
   }
 
   function dismissToast(toastId: string) {
@@ -146,8 +183,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   async function commitSnapshot(
     nextSnapshot: AppDataSnapshot,
-    options?: { successMessage?: string; errorMessage?: string },
+    options?: CommitSnapshotOptions,
   ) {
+    const previousSnapshot = snapshotRef.current;
     const normalized = normalizeSnapshot(nextSnapshot);
 
     snapshotRef.current = normalized;
@@ -156,8 +194,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       await persistSnapshot(normalized);
 
+      let undoToken: string | null = null;
+
+      if (options?.undoable && previousSnapshot) {
+        undoToken = createId();
+        undoRef.current = {
+          token: undoToken,
+          snapshot: previousSnapshot,
+          successMessage: options.undoSuccessMessage ?? 'Последнее действие отменено.',
+        };
+      }
+
       if (options?.successMessage) {
-        pushToast(options.successMessage, 'success');
+        pushToast(
+          options.successMessage,
+          'success',
+          undoToken
+            ? {
+                actionLabel: 'Отменить',
+                onAction: () => {
+                  void undoSnapshot(undoToken);
+                },
+              }
+            : undefined,
+        );
       }
 
       return true;
@@ -168,6 +228,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
         pushToast('Не удалось сохранить изменения в браузере.', 'error');
       }
 
+      return false;
+    }
+  }
+
+  async function undoSnapshot(token: string) {
+    const entry = undoRef.current;
+
+    if (!entry || entry.token !== token) {
+      pushToast('Это действие уже нельзя отменить.', 'info');
+      return false;
+    }
+
+    const normalized = normalizeSnapshot(entry.snapshot);
+
+    snapshotRef.current = normalized;
+    setSnapshot(normalized);
+
+    try {
+      await persistSnapshot(normalized);
+      undoRef.current = null;
+      pushToast(entry.successMessage, 'success');
+      return true;
+    } catch {
+      pushToast('Не удалось отменить последнее действие.', 'error');
       return false;
     }
   }
@@ -192,7 +276,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isArchived: false,
       createdAt: nowIso,
       updatedAt: nowIso,
-      completedToday: false,
+      completedInPeriod: false,
       lastCompletedAt: undefined,
       timesCompleted: 0,
     };
@@ -204,6 +288,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       {
         successMessage: 'Квест создан и сохранен в браузере.',
+        undoable: true,
+        undoSuccessMessage: 'Создание квеста отменено.',
       },
     );
   }
@@ -220,24 +306,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return commitSnapshot(
       {
         ...currentSnapshot,
-        quests: currentSnapshot.quests.map((quest) =>
-          quest.id === questId
-            ? {
-                ...quest,
-                title: values.title.trim(),
-                description: values.description.trim() || undefined,
-                statKey: values.statKey,
-                type: values.type,
-                difficulty: values.difficulty,
-                xpReward: XP_BY_DIFFICULTY[values.difficulty],
-                rewardText: values.rewardText.trim() || undefined,
-                updatedAt: nowIso,
-              }
-            : quest,
-        ),
+        quests: currentSnapshot.quests.map((quest) => {
+          if (quest.id !== questId) {
+            return quest;
+          }
+
+          const nextType = values.type;
+          const shouldArchive = nextType === 'one_time' && quest.timesCompleted > 0;
+
+          return {
+            ...quest,
+            title: values.title.trim(),
+            description: values.description.trim() || undefined,
+            statKey: values.statKey,
+            type: nextType,
+            difficulty: values.difficulty,
+            xpReward: XP_BY_DIFFICULTY[values.difficulty],
+            rewardText: values.rewardText.trim() || undefined,
+            isArchived: shouldArchive ? true : quest.isArchived,
+            completedInPeriod: isQuestCompletedInCurrentPeriod(
+              nextType,
+              quest.lastCompletedAt,
+            ),
+            updatedAt: nowIso,
+          };
+        }),
       },
       {
         successMessage: 'Квест обновлен.',
+        undoable: true,
+        undoSuccessMessage: 'Изменения квеста отменены.',
       },
     );
   }
@@ -266,6 +364,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       {
         successMessage: 'Квест перенесен в архив.',
+        undoable: true,
+        undoSuccessMessage: 'Перенос в архив отменен.',
       },
     );
   }
@@ -287,6 +387,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       {
         successMessage: 'Квест и связанные записи истории удалены.',
+        undoable: true,
+        undoSuccessMessage: 'Удаление отменено.',
+      },
+    );
+  }
+
+  async function restoreQuest(questId: string) {
+    const currentSnapshot = snapshotRef.current;
+
+    if (!currentSnapshot) {
+      return false;
+    }
+
+    const quest = currentSnapshot.quests.find((item) => item.id === questId);
+
+    if (!quest) {
+      pushToast('Квест не найден.', 'error');
+      return false;
+    }
+
+    if (!canRestoreQuest(quest)) {
+      pushToast(
+        'Завершенный разовый квест нельзя вернуть в активные без смены его истории.',
+        'info',
+      );
+      return false;
+    }
+
+    return commitSnapshot(
+      {
+        ...currentSnapshot,
+        quests: currentSnapshot.quests.map((item) =>
+          item.id === questId
+            ? {
+                ...item,
+                isArchived: false,
+                updatedAt: new Date().toISOString(),
+              }
+            : item,
+        ),
+      },
+      {
+        successMessage: 'Квест возвращен из архива.',
+        undoable: true,
+        undoSuccessMessage: 'Возврат из архива отменен.',
       },
     );
   }
@@ -305,8 +450,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return false;
     }
 
-    if (quest.type === 'daily' && quest.completedToday) {
-      pushToast('Этот daily-квест уже отмечен на сегодня.', 'info');
+    if (isRecurringQuestType(quest.type) && quest.completedInPeriod) {
+      pushToast('Этот повторяющийся квест уже отмечен в текущем периоде.', 'info');
       return false;
     }
 
@@ -344,7 +489,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               ...item,
               timesCompleted: item.timesCompleted + 1,
               lastCompletedAt: nowIso,
-              completedToday: item.type === 'daily',
+              completedInPeriod: isRecurringQuestType(item.type),
               isArchived: item.type === 'one_time' ? true : item.isArchived,
               updatedAt: nowIso,
             }
@@ -368,6 +513,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return commitSnapshot(nextSnapshot, {
       successMessage: `Квест выполнен. +${xpAwarded} опыта.${rewardSuffix}`,
+      undoable: true,
+      undoSuccessMessage: 'Последнее выполнение отменено.',
     });
   }
 
@@ -467,20 +614,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const nextSnapshot = normalizeSnapshot(validation.data);
-    snapshotRef.current = nextSnapshot;
-    setSnapshot(nextSnapshot);
-
-    try {
-      await persistSnapshot(nextSnapshot);
-      pushToast('Данные импортированы и сохранены в браузере.', 'success');
-      return true;
-    } catch {
-      pushToast(
+    return commitSnapshot(nextSnapshot, {
+      successMessage: 'Данные импортированы и сохранены в браузере.',
+      errorMessage:
         'Данные импортированы в интерфейс, но не удалось сохранить их в браузере.',
-        'error',
-      );
-      return false;
-    }
+      undoable: true,
+      undoSuccessMessage: 'Импорт отменен. Возвращена предыдущая локальная версия.',
+    });
   }
 
   const value: AppContextValue = {
@@ -496,6 +636,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateQuest,
     archiveQuest,
     deleteQuest,
+    restoreQuest,
     completeQuest,
     updateProfileName,
     updateSettings,

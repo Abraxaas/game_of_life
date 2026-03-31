@@ -1,4 +1,9 @@
-import { DEFAULT_APP_SETTINGS, SNAPSHOT_SCHEMA_VERSION, USER_PROFILE_ID, XP_BY_DIFFICULTY } from '../shared/constants';
+import {
+  DEFAULT_APP_SETTINGS,
+  SNAPSHOT_SCHEMA_VERSION,
+  USER_PROFILE_ID,
+  XP_BY_DIFFICULTY,
+} from '../shared/constants';
 import { STAT_DEFINITIONS } from '../shared/statConfig';
 import type { AppDataSnapshot, Quest, Stat, UserProfile } from '../types/domain';
 import { createId } from '../utils/id';
@@ -18,7 +23,7 @@ function createBaseStat(nowIso: string, definition: (typeof STAT_DEFINITIONS)[nu
 
 function createDemoQuest(
   nowIso: string,
-  input: Omit<Quest, 'id' | 'createdAt' | 'updatedAt' | 'completedToday' | 'lastCompletedAt' | 'timesCompleted' | 'isArchived' | 'xpReward'>,
+  input: Omit<Quest, 'id' | 'createdAt' | 'updatedAt' | 'completedInPeriod' | 'lastCompletedAt' | 'timesCompleted' | 'isArchived' | 'xpReward'>,
 ): Quest {
   return {
     id: createId(),
@@ -32,7 +37,7 @@ function createDemoQuest(
     isArchived: false,
     createdAt: nowIso,
     updatedAt: nowIso,
-    completedToday: false,
+    completedInPeriod: false,
     lastCompletedAt: undefined,
     timesCompleted: 0,
   };
@@ -62,28 +67,20 @@ export function createSeedSnapshot(): AppDataSnapshot {
       rewardText: 'После этого можно спокойно открыть любимый плейлист.',
     }),
     createDemoQuest(nowIso, {
-      title: 'Пройти тренировку',
-      description: 'Хотя бы 20 минут движения в комфортном темпе.',
-      statKey: 'health',
-      type: 'daily',
+      title: 'Позвонить родителям',
+      description: 'Один теплый созвон на неделе, без спешки и формальности.',
+      statKey: 'socialization',
+      type: 'weekly',
       difficulty: 'medium',
-      rewardText: 'После выполнения устрой себе спокойный душ и короткий отдых.',
+      rewardText: 'После звонка можно спокойно выдохнуть и заняться своим вечером.',
     }),
     createDemoQuest(nowIso, {
-      title: 'Не заказывать доставку сегодня',
-      description: 'Сделать более осознанный выбор и сэкономить деньги.',
+      title: 'Подвести бюджет месяца',
+      description: 'Коротко сверить траты, накопления и один следующий финансовый шаг.',
       statKey: 'finance',
-      type: 'daily',
-      difficulty: 'easy',
-      rewardText: 'Вечером можно взять хороший кофе без чувства вины.',
-    }),
-    createDemoQuest(nowIso, {
-      title: 'Разобрать рабочий стол',
-      description: 'Убрать бумаги, выбросить лишнее, освободить пространство.',
-      statKey: 'order',
-      type: 'one_time',
+      type: 'monthly',
       difficulty: 'medium',
-      rewardText: 'После этого закрой ноутбук на 15 минут и передохни.',
+      rewardText: 'После этого приятно закрыть месяц с чувством порядка.',
     }),
     createDemoQuest(nowIso, {
       title: 'Записаться к стоматологу',
@@ -92,14 +89,6 @@ export function createSeedSnapshot(): AppDataSnapshot {
       type: 'one_time',
       difficulty: 'hard',
       rewardText: 'После звонка можно спокойно прогуляться или выпить чай.',
-    }),
-    createDemoQuest(nowIso, {
-      title: 'Сделать неприятный звонок',
-      description: 'Решить зависший вопрос, который давно висит в голове.',
-      statKey: 'socialization',
-      type: 'one_time',
-      difficulty: 'medium',
-      rewardText: 'После выполнения можно снять напряжение короткой прогулкой.',
     }),
   ];
 

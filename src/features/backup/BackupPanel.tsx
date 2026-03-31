@@ -103,14 +103,14 @@ export function BackupPanel({
         <label className="checkbox-row">
           <input
             type="checkbox"
-            checked={settings.showCompletedToday}
+            checked={settings.showCompletedCurrentPeriod}
             onChange={(event) =>
               void onUpdateSettings({
-                showCompletedToday: event.target.checked,
+                showCompletedCurrentPeriod: event.target.checked,
               })
             }
           />
-          <span>Показывать daily-квесты, выполненные сегодня</span>
+          <span>Показывать повторяющиеся квесты, закрытые в текущем периоде</span>
         </label>
 
         <label className="checkbox-row">

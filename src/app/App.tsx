@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AppProvider, useAppContext } from './AppContext';
 import type { Quest } from '../types/domain';
 import { APP_DESCRIPTION, APP_NAME, APP_STAGE_LABEL } from '../shared/constants';
@@ -6,6 +6,7 @@ import { DashboardPage } from '../pages/DashboardPage';
 import { HistoryPage } from '../pages/HistoryPage';
 import { BackupPage } from '../pages/BackupPage';
 import { QuestModal } from '../features/quests/QuestModal';
+import { OnboardingModal } from '../features/onboarding/OnboardingModal';
 import { ToastViewport } from '../components/ToastViewport';
 
 function AppShell() {
@@ -22,6 +23,7 @@ function AppShell() {
     updateQuest,
     archiveQuest,
     deleteQuest,
+    restoreQuest,
     completeQuest,
     updateProfileName,
     updateSettings,
@@ -29,7 +31,21 @@ function AppShell() {
     importSnapshot,
   } = useAppContext();
   const [isQuestModalOpen, setQuestModalOpen] = useState(false);
+  const [isOnboardingOpen, setOnboardingOpen] = useState(false);
   const [editingQuest, setEditingQuest] = useState<Quest | null>(null);
+  const [hasAutoOpenedOnboarding, setHasAutoOpenedOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (!ready || !snapshot || hasAutoOpenedOnboarding) {
+      return;
+    }
+
+    if (!snapshot.appSettings.hasSeenOnboarding) {
+      setOnboardingOpen(true);
+    }
+
+    setHasAutoOpenedOnboarding(true);
+  }, [hasAutoOpenedOnboarding, ready, snapshot]);
 
   function handleOpenCreateQuest() {
     setEditingQuest(null);
@@ -44,6 +60,14 @@ function AppShell() {
   function handleCloseQuestModal() {
     setQuestModalOpen(false);
     setEditingQuest(null);
+  }
+
+  async function handleCloseOnboarding() {
+    setOnboardingOpen(false);
+
+    if (!snapshot?.appSettings.hasSeenOnboarding) {
+      await updateSettings({ hasSeenOnboarding: true });
+    }
   }
 
   if (!ready || !snapshot) {
@@ -67,9 +91,18 @@ function AppShell() {
           <p className="muted-text">{APP_DESCRIPTION}</p>
         </div>
 
-        <button type="button" className="primary-button" onClick={handleOpenCreateQuest}>
-          Новый квест
-        </button>
+        <div className="app-header__actions">
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => setOnboardingOpen(true)}
+          >
+            Как это работает
+          </button>
+          <button type="button" className="primary-button" onClick={handleOpenCreateQuest}>
+            Новый квест
+          </button>
+        </div>
       </header>
 
       {storageWarning ? (
@@ -110,13 +143,14 @@ function AppShell() {
             quests={snapshot.quests}
             completionLogs={snapshot.completionLogs}
             storageKind={storageKind}
-            showCompletedToday={snapshot.appSettings.showCompletedToday}
+            showCompletedCurrentPeriod={snapshot.appSettings.showCompletedCurrentPeriod}
             enableConfirmations={snapshot.appSettings.enableConfirmations}
             onCreateQuest={handleOpenCreateQuest}
             onEditQuest={handleOpenEditQuest}
             onCompleteQuest={completeQuest}
             onArchiveQuest={archiveQuest}
             onDeleteQuest={deleteQuest}
+            onRestoreQuest={restoreQuest}
             onUpdateUsername={updateProfileName}
           />
         ) : null}
@@ -150,6 +184,13 @@ function AppShell() {
             ? updateQuest(editingQuest.id, values)
             : createQuest(values)
         }
+      />
+
+      <OnboardingModal
+        open={isOnboardingOpen}
+        onClose={() => {
+          void handleCloseOnboarding();
+        }}
       />
 
       <ToastViewport toasts={toasts} onDismiss={dismissToast} />

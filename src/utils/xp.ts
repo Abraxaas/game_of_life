@@ -1,14 +1,13 @@
+import { XP_PER_LEVEL } from '../shared/constants';
+
 export interface LevelProgress {
   level: number;
   currentXpInLevel: number;
   xpForNextLevel: number;
 }
 
-const BASE_XP_THRESHOLD = 100;
-const XP_STEP_PER_LEVEL = 25;
-
 export function getXpRequiredForNextLevel(level: number) {
-  return BASE_XP_THRESHOLD + (level - 1) * XP_STEP_PER_LEVEL;
+  return level > 0 ? XP_PER_LEVEL : 0;
 }
 
 export function calculateLevelProgress(totalXp: number): LevelProgress {

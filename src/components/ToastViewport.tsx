@@ -17,14 +17,28 @@ export function ToastViewport({
           className={`toast toast--${toast.tone}`}
         >
           <p>{toast.text}</p>
-          <button
-            type="button"
-            className="ghost-button ghost-button--small"
-            onClick={() => onDismiss(toast.id)}
-            aria-label="Скрыть уведомление"
-          >
-            OK
-          </button>
+          <div className="toast__actions">
+            {toast.actionLabel ? (
+              <button
+                type="button"
+                className="secondary-button ghost-button--small"
+                onClick={() => {
+                  toast.onAction?.();
+                  onDismiss(toast.id);
+                }}
+              >
+                {toast.actionLabel}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="ghost-button ghost-button--small"
+              onClick={() => onDismiss(toast.id)}
+              aria-label="Скрыть уведомление"
+            >
+              OK
+            </button>
+          </div>
         </div>
       ))}
     </div>

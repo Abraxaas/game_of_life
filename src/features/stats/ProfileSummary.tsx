@@ -35,8 +35,8 @@ export function ProfileSummary({
         </div>
         <span className={`storage-pill storage-pill--${storageKind ?? 'memory'}`}>
           {storageKind === 'indexeddb'
-            ? 'Сохранение: IndexedDB'
-            : 'Временный режим'}
+            ? 'Сохранение в браузере'
+            : 'Временное хранение'}
         </span>
       </div>
 
@@ -46,7 +46,7 @@ export function ProfileSummary({
           <strong>{profile.totalLevel}</strong>
         </div>
         <div>
-          <span className="metric-label">Суммарный XP</span>
+          <span className="metric-label">Суммарный опыт</span>
           <strong>{profile.totalXp}</strong>
         </div>
       </div>

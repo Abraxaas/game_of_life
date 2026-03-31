@@ -243,7 +243,7 @@ export async function initializeStorage(): Promise<StorageInitResult> {
       persistence: storage.persistence,
       snapshot,
       warning:
-        'IndexedDB недоступна. Приложение перешло во временный режим без постоянного сохранения.',
+        'Хранилище браузера недоступно. Приложение перешло во временный режим без постоянного сохранения.',
     };
   }
 
@@ -269,7 +269,7 @@ export async function initializeStorage(): Promise<StorageInitResult> {
       persistence: storage.persistence,
       snapshot,
       warning:
-        'Не удалось открыть локальную базу IndexedDB. Приложение работает во временной памяти.',
+        'Не удалось открыть хранилище браузера. Приложение работает во временной памяти.',
     };
   }
 }

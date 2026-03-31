@@ -67,7 +67,7 @@ export function BackupPanel({
             <h2>Экспорт и импорт JSON</h2>
           </div>
           <p className="muted-text">
-            Данные хранятся локально и могут быть перенесены через один JSON-файл.
+            Данные сохраняются в браузере пользователя и могут быть перенесены через один JSON-файл.
           </p>
         </div>
 
@@ -88,7 +88,7 @@ export function BackupPanel({
 
         <p className="muted-text">{formatRelativeBackupTime(settings.lastBackupAt)}</p>
         <p className="muted-text">
-          Режим хранения: {storageKind === 'indexeddb' ? 'постоянный локальный' : 'временный'}.
+          Режим хранения: {storageKind === 'indexeddb' ? 'в браузере' : 'временный'}.
         </p>
       </section>
 

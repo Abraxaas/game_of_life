@@ -165,7 +165,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (options?.errorMessage) {
         pushToast(options.errorMessage, 'error');
       } else {
-        pushToast('Не удалось сохранить изменения локально.', 'error');
+        pushToast('Не удалось сохранить изменения в браузере.', 'error');
       }
 
       return false;
@@ -203,7 +203,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         quests: [nextQuest, ...currentSnapshot.quests],
       },
       {
-        successMessage: 'Квест создан и сохранен локально.',
+        successMessage: 'Квест создан и сохранен в браузере.',
       },
     );
   }
@@ -367,7 +367,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       : '';
 
     return commitSnapshot(nextSnapshot, {
-      successMessage: `Квест выполнен. +${xpAwarded} XP.${rewardSuffix}`,
+      successMessage: `Квест выполнен. +${xpAwarded} опыта.${rewardSuffix}`,
     });
   }
 
@@ -472,11 +472,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     try {
       await persistSnapshot(nextSnapshot);
-      pushToast('Данные импортированы и сохранены локально.', 'success');
+      pushToast('Данные импортированы и сохранены в браузере.', 'success');
       return true;
     } catch {
       pushToast(
-        'Данные импортированы в интерфейс, но не удалось сохранить их локально.',
+        'Данные импортированы в интерфейс, но не удалось сохранить их в браузере.',
         'error',
       );
       return false;

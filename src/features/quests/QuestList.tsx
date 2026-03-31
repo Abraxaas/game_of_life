@@ -1,3 +1,4 @@
+import { DIFFICULTY_LABELS } from '../../shared/constants';
 import type { CompletionLog, Quest, Stat } from '../../types/domain';
 import { calculateQuestStreak } from '../../utils/streaks';
 import { formatDateTime } from '../../utils/date';
@@ -86,9 +87,9 @@ export function QuestList({
             <h3>{quest.title}</h3>
             <div className="quest-card__badges">
               <span className="tag">{stat?.icon ?? '•'} {stat?.name ?? quest.statKey}</span>
-              <span className="tag">{quest.type === 'daily' ? 'Daily' : 'One-time'}</span>
-              <span className="tag">+{quest.xpReward} XP</span>
-              <span className="tag">{quest.difficulty}</span>
+              <span className="tag">{quest.type === 'daily' ? 'Ежедневный' : 'Разовый'}</span>
+              <span className="tag">+{quest.xpReward} опыта</span>
+              <span className="tag">{DIFFICULTY_LABELS[quest.difficulty]}</span>
             </div>
           </div>
 
@@ -142,7 +143,7 @@ export function QuestList({
           <span>Выполнений: {quest.timesCompleted}</span>
           {quest.type === 'daily' ? (
             <span>
-              Streak: {streak.current} сейчас / {streak.best} лучший
+              Серия: {streak.current} сейчас / {streak.best} лучшая
             </span>
           ) : null}
           <span>Последний раз: {formatDateTime(quest.lastCompletedAt)}</span>

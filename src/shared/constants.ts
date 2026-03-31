@@ -1,8 +1,9 @@
 import type { AppSettings, QuestDifficulty } from '../types/domain';
 
-export const APP_NAME = 'Routine RPG';
+export const APP_NAME = 'Игра жизни';
 export const APP_DESCRIPTION =
-  'Локальный MVP для спокойной геймификации рутины и полезных привычек.';
+  'Тестовая онлайн-версия 1.0 для спокойной геймификации рутины и полезных привычек.';
+export const APP_STAGE_LABEL = 'Тестовая онлайн-версия 1.0';
 
 export const STORAGE_DB_NAME = 'routine-rpg-mvp';
 export const STORAGE_DB_VERSION = 1;
@@ -16,6 +17,12 @@ export const XP_BY_DIFFICULTY: Record<QuestDifficulty, number> = {
   easy: 10,
   medium: 25,
   hard: 50,
+};
+
+export const DIFFICULTY_LABELS: Record<QuestDifficulty, string> = {
+  easy: 'Легкий',
+  medium: 'Средний',
+  hard: 'Сложный',
 };
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {

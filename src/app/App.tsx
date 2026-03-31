@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AppProvider, useAppContext } from './AppContext';
 import type { Quest } from '../types/domain';
-import { APP_DESCRIPTION, APP_NAME } from '../shared/constants';
+import { APP_DESCRIPTION, APP_NAME, APP_STAGE_LABEL } from '../shared/constants';
 import { DashboardPage } from '../pages/DashboardPage';
 import { HistoryPage } from '../pages/HistoryPage';
 import { BackupPage } from '../pages/BackupPage';
@@ -62,7 +62,7 @@ function AppShell() {
     <div className="app-shell">
       <header className="app-header">
         <div>
-          <p className="eyebrow">Local MVP</p>
+          <p className="eyebrow">{APP_STAGE_LABEL}</p>
           <h1>{APP_NAME}</h1>
           <p className="muted-text">{APP_DESCRIPTION}</p>
         </div>
@@ -84,21 +84,21 @@ function AppShell() {
           className={activePage === 'dashboard' ? 'tab-button tab-button--active' : 'tab-button'}
           onClick={() => setActivePage('dashboard')}
         >
-          Dashboard
+          Главная
         </button>
         <button
           type="button"
           className={activePage === 'history' ? 'tab-button tab-button--active' : 'tab-button'}
           onClick={() => setActivePage('history')}
         >
-          History
+          История
         </button>
         <button
           type="button"
           className={activePage === 'backup' ? 'tab-button tab-button--active' : 'tab-button'}
           onClick={() => setActivePage('backup')}
         >
-          Backup / Settings
+          Резервная копия и настройки
         </button>
       </nav>
 

@@ -38,8 +38,8 @@ export function DashboardPage({
     <div className="page-stack">
       <section className="hero panel">
         <div>
-          <p className="eyebrow">Dashboard</p>
-          <h1>Рутина как спокойная RPG-прокачка</h1>
+          <p className="eyebrow">Главная</p>
+          <h1>Рутина как спокойная ролевая прокачка</h1>
           <p className="hero__text">
             Открыл приложение, отметил полезное действие, получил прогресс. Без наказаний,
             без лишних экранов, только понятный личный контроль.

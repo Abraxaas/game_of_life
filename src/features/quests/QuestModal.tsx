@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { XP_BY_DIFFICULTY } from '../../shared/constants';
+import { DIFFICULTY_LABELS, XP_BY_DIFFICULTY } from '../../shared/constants';
 import type { Quest, QuestFormValues, Stat } from '../../types/domain';
 import { Modal } from '../../components/Modal';
 
@@ -150,9 +150,9 @@ export function QuestModal({
                 }))
               }
             >
-              <option value="easy">Easy · 10 XP</option>
-              <option value="medium">Medium · 25 XP</option>
-              <option value="hard">Hard · 50 XP</option>
+              <option value="easy">{DIFFICULTY_LABELS.easy} · 10 опыта</option>
+              <option value="medium">{DIFFICULTY_LABELS.medium} · 25 опыта</option>
+              <option value="hard">{DIFFICULTY_LABELS.hard} · 50 опыта</option>
             </select>
           </label>
 
@@ -174,7 +174,7 @@ export function QuestModal({
         </div>
 
         <p className="helper-text">
-          За выполнение будет начислено {XP_BY_DIFFICULTY[values.difficulty]} XP.
+          За выполнение будет начислено {XP_BY_DIFFICULTY[values.difficulty]} опыта.
         </p>
 
         {formError ? <p className="form-error">{formError}</p> : null}

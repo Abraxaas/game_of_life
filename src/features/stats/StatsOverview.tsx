@@ -40,8 +40,8 @@ export function StatsOverview({ stats }: StatsOverviewProps) {
               </div>
 
               <div className="stat-card__footer">
-                <span>{progress.currentXpInLevel} XP в текущем уровне</span>
-                <strong>{progress.xpForNextLevel} XP до следующего</strong>
+                <span>{progress.currentXpInLevel} опыта в текущем уровне</span>
+                <strong>{progress.xpForNextLevel} опыта до следующего</strong>
               </div>
             </article>
           );

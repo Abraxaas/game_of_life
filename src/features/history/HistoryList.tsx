@@ -44,7 +44,7 @@ export function HistoryList({ logs, quests, stats }: HistoryListProps) {
 
                 <div className="history-row__meta">
                   <span>{formatDateTime(log.completedAt)}</span>
-                  <strong>+{log.xpAwarded} XP</strong>
+                  <strong>+{log.xpAwarded} опыта</strong>
                 </div>
               </article>
             );

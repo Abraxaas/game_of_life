@@ -67,6 +67,15 @@ npm run dev
 npm run build
 ```
 
+## Деплой на GitHub Pages
+
+Проект уже подготовлен под репозиторий `Abraxaas/game_of_life`.
+
+- production `base` настроен в [vite.config.ts](/Users/dmitrijmalysev/Documents/prog/game/codex_repo/vite.config.ts)
+- workflow деплоя лежит в [.github/workflows/deploy-pages.yml](/Users/dmitrijmalysev/Documents/prog/game/codex_repo/.github/workflows/deploy-pages.yml)
+
+После пуша в `main` GitHub Actions сможет собрать проект и выложить его на `GitHub Pages`.
+
 ## Где хранятся данные
 
 - основное хранилище: `IndexedDB`

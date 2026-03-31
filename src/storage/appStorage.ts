@@ -1,0 +1,300 @@
+import {
+  DEFAULT_APP_SETTINGS,
+  SNAPSHOT_SCHEMA_VERSION,
+  USER_PROFILE_ID,
+  XP_BY_DIFFICULTY,
+} from '../shared/constants';
+import { STAT_DEFINITIONS } from '../shared/statConfig';
+import type {
+  AppDataSnapshot,
+  AppSettings,
+  Quest,
+  Stat,
+  StorageInitResult,
+  StorageKind,
+  UserProfile,
+} from '../types/domain';
+import { isToday } from '../utils/date';
+import { createId } from '../utils/id';
+import { calculateLevelProgress } from '../utils/xp';
+import {
+  hasIndexedDbSupport,
+  openAppDatabase,
+  requestToPromise,
+  STORE_NAMES,
+  transactionToPromise,
+} from './db';
+import { createSeedSnapshot } from './seed';
+
+interface StorageAdapter {
+  persistence: StorageKind;
+  load(): Promise<AppDataSnapshot>;
+  save(snapshot: AppDataSnapshot): Promise<void>;
+}
+
+function cloneSnapshot(snapshot: AppDataSnapshot) {
+  return structuredClone(snapshot);
+}
+
+function rebuildStat(
+  stat: Partial<Stat> | undefined,
+  fallback: { key: string; name: string; icon: string },
+): Stat {
+  const nowIso = new Date().toISOString();
+  const xp = Math.max(0, stat?.xp ?? 0);
+  const levelProgress = calculateLevelProgress(xp);
+
+  return {
+    id: stat?.id ?? createId(),
+    key: stat?.key ?? fallback.key,
+    name: stat?.name ?? fallback.name,
+    icon: stat?.icon ?? fallback.icon,
+    level: levelProgress.level,
+    xp,
+    createdAt: stat?.createdAt ?? nowIso,
+    updatedAt: nowIso,
+  };
+}
+
+function rebuildQuest(quest: Quest): Quest {
+  return {
+    ...quest,
+    xpReward: XP_BY_DIFFICULTY[quest.difficulty],
+    completedToday: isToday(quest.lastCompletedAt),
+  };
+}
+
+function buildProfile(stats: Stat[], currentProfile?: UserProfile): UserProfile {
+  const nowIso = new Date().toISOString();
+
+  return {
+    id: currentProfile?.id ?? USER_PROFILE_ID,
+    username: currentProfile?.username,
+    createdAt: currentProfile?.createdAt ?? nowIso,
+    updatedAt: nowIso,
+    totalLevel: stats.reduce((sum, stat) => sum + stat.level, 0),
+    totalXp: stats.reduce((sum, stat) => sum + stat.xp, 0),
+  };
+}
+
+function buildSettings(settings?: Partial<AppSettings>): AppSettings {
+  return {
+    ...DEFAULT_APP_SETTINGS,
+    ...settings,
+    id: DEFAULT_APP_SETTINGS.id,
+  };
+}
+
+export function normalizeSnapshot(snapshot: AppDataSnapshot): AppDataSnapshot {
+  const knownStats = new Map(snapshot.stats.map((stat) => [stat.key, stat]));
+
+  const configuredStats = STAT_DEFINITIONS.map((definition) =>
+    rebuildStat(knownStats.get(definition.key), definition),
+  );
+
+  const extraStats = snapshot.stats
+    .filter((stat) => !STAT_DEFINITIONS.some((definition) => definition.key === stat.key))
+    .map((stat) =>
+      rebuildStat(stat, {
+        key: stat.key,
+        name: stat.name,
+        icon: stat.icon,
+      }),
+    );
+
+  const stats = [...configuredStats, ...extraStats];
+  const quests = snapshot.quests.map(rebuildQuest);
+  const completionLogs = [...snapshot.completionLogs].sort((left, right) =>
+    right.completedAt.localeCompare(left.completedAt),
+  );
+
+  return {
+    schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+    stats,
+    quests,
+    completionLogs,
+    userProfile: buildProfile(stats, snapshot.userProfile),
+    appSettings: buildSettings(snapshot.appSettings),
+  };
+}
+
+class IndexedDbStorage implements StorageAdapter {
+  public persistence: StorageKind = 'indexeddb';
+
+  private databasePromise = openAppDatabase();
+
+  async load() {
+    const database = await this.databasePromise;
+    const transaction = database.transaction(
+      [
+        STORE_NAMES.stats,
+        STORE_NAMES.quests,
+        STORE_NAMES.completionLogs,
+        STORE_NAMES.userProfile,
+        STORE_NAMES.appSettings,
+      ],
+      'readonly',
+    );
+
+    const statsRequest = transaction.objectStore(STORE_NAMES.stats).getAll();
+    const questsRequest = transaction.objectStore(STORE_NAMES.quests).getAll();
+    const logsRequest = transaction
+      .objectStore(STORE_NAMES.completionLogs)
+      .getAll();
+    const profileRequest = transaction
+      .objectStore(STORE_NAMES.userProfile)
+      .getAll();
+    const settingsRequest = transaction
+      .objectStore(STORE_NAMES.appSettings)
+      .getAll();
+
+    const [stats, quests, completionLogs, profiles, settings] = await Promise.all([
+      requestToPromise(statsRequest),
+      requestToPromise(questsRequest),
+      requestToPromise(logsRequest),
+      requestToPromise(profileRequest),
+      requestToPromise(settingsRequest),
+      transactionToPromise(transaction),
+    ]);
+
+    if (stats.length === 0 && profiles.length === 0) {
+      return createSeedSnapshot();
+    }
+
+    const seed = createSeedSnapshot();
+
+    return {
+      schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+      stats,
+      quests,
+      completionLogs,
+      userProfile: profiles[0] ?? seed.userProfile,
+      appSettings: settings[0] ?? seed.appSettings,
+    };
+  }
+
+  async save(snapshot: AppDataSnapshot) {
+    const database = await this.databasePromise;
+    const transaction = database.transaction(
+      [
+        STORE_NAMES.stats,
+        STORE_NAMES.quests,
+        STORE_NAMES.completionLogs,
+        STORE_NAMES.userProfile,
+        STORE_NAMES.appSettings,
+      ],
+      'readwrite',
+    );
+
+    const statsStore = transaction.objectStore(STORE_NAMES.stats);
+    const questsStore = transaction.objectStore(STORE_NAMES.quests);
+    const logsStore = transaction.objectStore(STORE_NAMES.completionLogs);
+    const profileStore = transaction.objectStore(STORE_NAMES.userProfile);
+    const settingsStore = transaction.objectStore(STORE_NAMES.appSettings);
+
+    statsStore.clear();
+    questsStore.clear();
+    logsStore.clear();
+    profileStore.clear();
+    settingsStore.clear();
+
+    snapshot.stats.forEach((stat) => {
+      statsStore.put(stat);
+    });
+
+    snapshot.quests.forEach((quest) => {
+      questsStore.put(quest);
+    });
+
+    snapshot.completionLogs.forEach((log) => {
+      logsStore.put(log);
+    });
+
+    profileStore.put(snapshot.userProfile);
+    settingsStore.put(snapshot.appSettings);
+
+    await transactionToPromise(transaction);
+  }
+}
+
+class MemoryStorage implements StorageAdapter {
+  public persistence: StorageKind = 'memory';
+
+  private snapshot = createSeedSnapshot();
+
+  async load() {
+    return cloneSnapshot(this.snapshot);
+  }
+
+  async save(snapshot: AppDataSnapshot) {
+    this.snapshot = cloneSnapshot(snapshot);
+  }
+}
+
+export async function initializeStorage(): Promise<StorageInitResult> {
+  if (!hasIndexedDbSupport()) {
+    const storage = new MemoryStorage();
+    activeStoragePromise = Promise.resolve(storage);
+    const snapshot = normalizeSnapshot(await storage.load());
+
+    await storage.save(snapshot);
+
+    return {
+      persistence: storage.persistence,
+      snapshot,
+      warning:
+        'IndexedDB недоступна. Приложение перешло во временный режим без постоянного сохранения.',
+    };
+  }
+
+  try {
+    const storage = new IndexedDbStorage();
+    activeStoragePromise = Promise.resolve(storage);
+    const snapshot = normalizeSnapshot(await storage.load());
+
+    await storage.save(snapshot);
+
+    return {
+      persistence: storage.persistence,
+      snapshot,
+    };
+  } catch {
+    const storage = new MemoryStorage();
+    activeStoragePromise = Promise.resolve(storage);
+    const snapshot = normalizeSnapshot(await storage.load());
+
+    await storage.save(snapshot);
+
+    return {
+      persistence: storage.persistence,
+      snapshot,
+      warning:
+        'Не удалось открыть локальную базу IndexedDB. Приложение работает во временной памяти.',
+    };
+  }
+}
+
+let activeStoragePromise: Promise<StorageAdapter> | null = null;
+
+async function getActiveStorage() {
+  if (!activeStoragePromise) {
+    activeStoragePromise = (async () => {
+      if (!hasIndexedDbSupport()) {
+        return new MemoryStorage();
+      }
+
+      try {
+        return new IndexedDbStorage();
+      } catch {
+        return new MemoryStorage();
+      }
+    })();
+  }
+
+  return activeStoragePromise;
+}
+
+export async function persistSnapshot(snapshot: AppDataSnapshot) {
+  const storage = await getActiveStorage();
+  await storage.save(normalizeSnapshot(snapshot));
+}

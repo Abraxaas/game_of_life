@@ -1,6 +1,7 @@
 import type {
   AppDataSnapshot,
   AppSettings,
+  AvatarProfile,
   CompletionLog,
   ImportValidationResult,
   Stat,
@@ -40,6 +41,24 @@ function isStat(value: unknown): value is Stat {
     isString(value.icon) &&
     isNumber(value.level) &&
     isNumber(value.xp) &&
+    isString(value.createdAt) &&
+    isString(value.updatedAt)
+  );
+}
+
+function isAvatar(value: unknown): value is AvatarProfile {
+  if (!isObject(value)) {
+    return false;
+  }
+
+  return (
+    isString(value.id) &&
+    isString(value.gender) &&
+    isString(value.skinTone) &&
+    isString(value.eyeColor) &&
+    isString(value.hairColor) &&
+    isString(value.hairStyle) &&
+    isString(value.beardStyle) &&
     isString(value.createdAt) &&
     isString(value.updatedAt)
   );
@@ -144,6 +163,7 @@ function isAppSettings(value: unknown, schemaVersion: number): value is AppSetti
 
 function migrateSnapshot(value: Record<string, unknown>): AppDataSnapshot {
   const schemaVersion = value.schemaVersion as number;
+  const avatarValue = value.avatar;
 
   return {
     schemaVersion: SNAPSHOT_SCHEMA_VERSION,
@@ -169,6 +189,10 @@ function migrateSnapshot(value: Record<string, unknown>): AppDataSnapshot {
     })),
     completionLogs: value.completionLogs as CompletionLog[],
     userProfile: value.userProfile as UserProfile,
+    avatar:
+      schemaVersion >= 3 && isAvatar(avatarValue)
+        ? avatarValue
+        : null,
     appSettings: {
       ...(value.appSettings as AppSettings),
       showCompletedCurrentPeriod:
@@ -239,6 +263,15 @@ export function validateImportedSnapshot(
 
   if (!isUserProfile(value.userProfile)) {
     return { ok: false, error: 'Раздел userProfile имеет неверную структуру.' };
+  }
+
+  if (
+    schemaVersion >= 3 &&
+    value.avatar !== undefined &&
+    value.avatar !== null &&
+    !isAvatar(value.avatar)
+  ) {
+    return { ok: false, error: 'Раздел avatar имеет неверную структуру.' };
   }
 
   if (!isAppSettings(value.appSettings, schemaVersion)) {

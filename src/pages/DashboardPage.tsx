@@ -1,11 +1,23 @@
-import type { CompletionLog, Quest, Stat, StorageKind, UserProfile } from '../types/domain';
+import type { CSSProperties } from 'react';
+import type {
+  AvatarFormValues,
+  AvatarProfile,
+  CompletionLog,
+  Quest,
+  Stat,
+  StorageKind,
+  UserProfile,
+} from '../types/domain';
+import { AvatarPanel } from '../features/avatar/AvatarPanel';
 import { ProfileSummary } from '../features/stats/ProfileSummary';
 import { StatsOverview } from '../features/stats/StatsOverview';
 import { TodaySummary } from '../features/stats/TodaySummary';
 import { QuestList } from '../features/quests/QuestList';
+import { getDashboardBackgroundTheme } from '../utils/avatar';
 
 interface DashboardPageProps {
   profile: UserProfile;
+  avatar: AvatarProfile | null;
   stats: Stat[];
   quests: Quest[];
   completionLogs: CompletionLog[];
@@ -18,11 +30,13 @@ interface DashboardPageProps {
   onArchiveQuest: (questId: string) => Promise<boolean>;
   onDeleteQuest: (questId: string) => Promise<boolean>;
   onRestoreQuest: (questId: string) => Promise<boolean>;
+  onSaveAvatar: (values: AvatarFormValues) => Promise<boolean>;
   onUpdateUsername: (username: string) => Promise<boolean>;
 }
 
 export function DashboardPage({
   profile,
+  avatar,
   stats,
   quests,
   completionLogs,
@@ -35,10 +49,19 @@ export function DashboardPage({
   onArchiveQuest,
   onDeleteQuest,
   onRestoreQuest,
+  onSaveAvatar,
   onUpdateUsername,
 }: DashboardPageProps) {
+  const dashboardTheme = getDashboardBackgroundTheme(stats, quests, completionLogs);
+  const dashboardStyle = {
+    '--dashboard-accent': dashboardTheme.accent,
+    '--dashboard-glow': dashboardTheme.glow,
+    '--dashboard-glow-strength': `${dashboardTheme.glowStrength}`,
+    '--dashboard-saturation': `${dashboardTheme.saturation}`,
+  } as CSSProperties;
+
   return (
-    <div className="page-stack">
+    <div className="page-stack dashboard-page" style={dashboardStyle}>
       <section className="hero panel">
         <div>
           <p className="eyebrow">Главная</p>
@@ -58,6 +81,12 @@ export function DashboardPage({
         profile={profile}
         storageKind={storageKind}
         onUpdateUsername={onUpdateUsername}
+      />
+
+      <AvatarPanel
+        avatar={avatar}
+        stats={stats}
+        onSaveAvatar={onSaveAvatar}
       />
 
       <TodaySummary

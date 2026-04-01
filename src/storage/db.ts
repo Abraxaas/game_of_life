@@ -8,6 +8,7 @@ export const STORE_NAMES = {
   quests: 'quests',
   completionLogs: 'completionLogs',
   userProfile: 'userProfile',
+  avatarProfile: 'avatarProfile',
   appSettings: 'appSettings',
 } as const;
 
@@ -55,6 +56,12 @@ export function openAppDatabase() {
 
       if (!database.objectStoreNames.contains(STORE_NAMES.userProfile)) {
         database.createObjectStore(STORE_NAMES.userProfile, {
+          keyPath: 'id',
+        });
+      }
+
+      if (!database.objectStoreNames.contains(STORE_NAMES.avatarProfile)) {
+        database.createObjectStore(STORE_NAMES.avatarProfile, {
           keyPath: 'id',
         });
       }

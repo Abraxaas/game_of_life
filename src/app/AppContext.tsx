@@ -9,6 +9,7 @@ import {
 import type {
   AppDataSnapshot,
   AppSettings,
+  AvatarFormValues,
   PageKey,
   Quest,
   QuestFormValues,
@@ -20,6 +21,7 @@ import { UI_PAGE_STORAGE_KEY, XP_BY_DIFFICULTY } from '../shared/constants';
 import { initializeStorage, normalizeSnapshot, persistSnapshot } from '../storage/appStorage';
 import { createSeedSnapshot } from '../storage/seed';
 import { validateImportedSnapshot } from '../utils/importValidation';
+import { buildAvatarProfile } from '../utils/avatar';
 import { createId } from '../utils/id';
 import {
   canRestoreQuest,
@@ -47,6 +49,7 @@ interface AppContextValue {
   deleteQuest: (questId: string) => Promise<boolean>;
   restoreQuest: (questId: string) => Promise<boolean>;
   completeQuest: (questId: string) => Promise<boolean>;
+  saveAvatar: (values: AvatarFormValues) => Promise<boolean>;
   updateProfileName: (username: string) => Promise<boolean>;
   updateSettings: (patch: Partial<AppSettings>) => Promise<boolean>;
   exportSnapshot: () => Promise<ExportPayload | null>;
@@ -518,6 +521,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }
 
+  async function saveAvatar(values: AvatarFormValues) {
+    const currentSnapshot = snapshotRef.current;
+
+    if (!currentSnapshot) {
+      return false;
+    }
+
+    const nextAvatar = buildAvatarProfile(values, currentSnapshot.avatar);
+
+    return commitSnapshot(
+      {
+        ...currentSnapshot,
+        avatar: nextAvatar,
+      },
+      {
+        successMessage: currentSnapshot.avatar
+          ? 'Аватар обновлен.'
+          : 'Аватар создан.',
+        undoable: true,
+        undoSuccessMessage: currentSnapshot.avatar
+          ? 'Изменения аватара отменены.'
+          : 'Создание аватара отменено.',
+      },
+    );
+  }
+
   async function updateProfileName(username: string) {
     const currentSnapshot = snapshotRef.current;
 
@@ -638,6 +667,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteQuest,
     restoreQuest,
     completeQuest,
+    saveAvatar,
     updateProfileName,
     updateSettings,
     exportSnapshot,

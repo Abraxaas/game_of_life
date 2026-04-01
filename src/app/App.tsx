@@ -25,6 +25,7 @@ function AppShell() {
     deleteQuest,
     restoreQuest,
     completeQuest,
+    saveAvatar,
     updateProfileName,
     updateSettings,
     exportSnapshot,
@@ -139,6 +140,7 @@ function AppShell() {
         {activePage === 'dashboard' ? (
           <DashboardPage
             profile={snapshot.userProfile}
+            avatar={snapshot.avatar}
             stats={snapshot.stats}
             quests={snapshot.quests}
             completionLogs={snapshot.completionLogs}
@@ -151,6 +153,7 @@ function AppShell() {
             onArchiveQuest={archiveQuest}
             onDeleteQuest={deleteQuest}
             onRestoreQuest={restoreQuest}
+            onSaveAvatar={saveAvatar}
             onUpdateUsername={updateProfileName}
           />
         ) : null}

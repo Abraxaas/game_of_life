@@ -98,6 +98,7 @@ export function createSeedSnapshot(): AppDataSnapshot {
     quests,
     completionLogs: [],
     userProfile: createUserProfile(nowIso, stats.length),
+    avatar: null,
     appSettings: {
       ...DEFAULT_APP_SETTINGS,
     },

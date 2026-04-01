@@ -8,6 +8,7 @@ import { STAT_DEFINITIONS } from '../shared/statConfig';
 import type {
   AppDataSnapshot,
   AppSettings,
+  AvatarProfile,
   Quest,
   QuestDifficulty,
   Stat,
@@ -16,6 +17,7 @@ import type {
   UserProfile,
 } from '../types/domain';
 import { createId } from '../utils/id';
+import { normalizeAvatarProfile } from '../utils/avatar';
 import {
   isQuestCompletedInCurrentPeriod,
   normalizeQuestDifficulty,
@@ -47,6 +49,12 @@ interface LegacyQuestSnapshot extends Partial<Quest> {
 
 interface LegacyAppSettingsSnapshot extends Partial<AppSettings> {
   showCompletedToday?: boolean;
+}
+
+interface LegacyAppDataSnapshot extends Omit<AppDataSnapshot, 'avatar' | 'appSettings' | 'quests'> {
+  avatar?: AvatarProfile | null;
+  appSettings: LegacyAppSettingsSnapshot;
+  quests: LegacyQuestSnapshot[];
 }
 
 function rebuildStat(
@@ -121,7 +129,7 @@ function buildSettings(settings?: LegacyAppSettingsSnapshot): AppSettings {
   };
 }
 
-export function normalizeSnapshot(snapshot: AppDataSnapshot): AppDataSnapshot {
+export function normalizeSnapshot(snapshot: LegacyAppDataSnapshot): AppDataSnapshot {
   const knownStats = new Map(snapshot.stats.map((stat) => [stat.key, stat]));
 
   const configuredStats = STAT_DEFINITIONS.map((definition) =>
@@ -150,6 +158,7 @@ export function normalizeSnapshot(snapshot: AppDataSnapshot): AppDataSnapshot {
     quests,
     completionLogs,
     userProfile: buildProfile(stats, snapshot.userProfile),
+    avatar: normalizeAvatarProfile(snapshot.avatar),
     appSettings: buildSettings(snapshot.appSettings),
   };
 }
@@ -167,6 +176,7 @@ class IndexedDbStorage implements StorageAdapter {
         STORE_NAMES.quests,
         STORE_NAMES.completionLogs,
         STORE_NAMES.userProfile,
+        STORE_NAMES.avatarProfile,
         STORE_NAMES.appSettings,
       ],
       'readonly',
@@ -180,15 +190,19 @@ class IndexedDbStorage implements StorageAdapter {
     const profileRequest = transaction
       .objectStore(STORE_NAMES.userProfile)
       .getAll();
+    const avatarRequest = transaction
+      .objectStore(STORE_NAMES.avatarProfile)
+      .getAll();
     const settingsRequest = transaction
       .objectStore(STORE_NAMES.appSettings)
       .getAll();
 
-    const [stats, quests, completionLogs, profiles, settings] = await Promise.all([
+    const [stats, quests, completionLogs, profiles, avatars, settings] = await Promise.all([
       requestToPromise(statsRequest),
       requestToPromise(questsRequest),
       requestToPromise(logsRequest),
       requestToPromise(profileRequest),
+      requestToPromise(avatarRequest),
       requestToPromise(settingsRequest),
       transactionToPromise(transaction),
     ]);
@@ -205,6 +219,7 @@ class IndexedDbStorage implements StorageAdapter {
       quests,
       completionLogs,
       userProfile: profiles[0] ?? seed.userProfile,
+      avatar: avatars[0] ?? null,
       appSettings: settings[0] ?? seed.appSettings,
     };
   }
@@ -217,6 +232,7 @@ class IndexedDbStorage implements StorageAdapter {
         STORE_NAMES.quests,
         STORE_NAMES.completionLogs,
         STORE_NAMES.userProfile,
+        STORE_NAMES.avatarProfile,
         STORE_NAMES.appSettings,
       ],
       'readwrite',
@@ -226,12 +242,14 @@ class IndexedDbStorage implements StorageAdapter {
     const questsStore = transaction.objectStore(STORE_NAMES.quests);
     const logsStore = transaction.objectStore(STORE_NAMES.completionLogs);
     const profileStore = transaction.objectStore(STORE_NAMES.userProfile);
+    const avatarStore = transaction.objectStore(STORE_NAMES.avatarProfile);
     const settingsStore = transaction.objectStore(STORE_NAMES.appSettings);
 
     statsStore.clear();
     questsStore.clear();
     logsStore.clear();
     profileStore.clear();
+    avatarStore.clear();
     settingsStore.clear();
 
     snapshot.stats.forEach((stat) => {
@@ -247,6 +265,11 @@ class IndexedDbStorage implements StorageAdapter {
     });
 
     profileStore.put(snapshot.userProfile);
+
+    if (snapshot.avatar) {
+      avatarStore.put(snapshot.avatar);
+    }
+
     settingsStore.put(snapshot.appSettings);
 
     await transactionToPromise(transaction);

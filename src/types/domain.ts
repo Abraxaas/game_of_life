@@ -2,6 +2,12 @@ export type StatKey = string;
 
 export type QuestType = 'one_time' | 'daily' | 'weekly' | 'monthly';
 export type QuestDifficulty = 'easy' | 'medium' | 'hard';
+export type AvatarGender = 'female' | 'male';
+export type AvatarSkinTone = 'light' | 'medium' | 'deep';
+export type AvatarEyeColor = 'brown' | 'hazel' | 'green' | 'blue';
+export type AvatarHairColor = 'black' | 'brown' | 'blonde' | 'auburn';
+export type AvatarHairStyle = 'short' | 'wave' | 'long';
+export type AvatarBeardStyle = 'none' | 'stubble' | 'trim' | 'full';
 export type AppTheme = 'light';
 export type ToastTone = 'success' | 'error' | 'info';
 export type PageKey = 'dashboard' | 'history' | 'backup';
@@ -53,6 +59,18 @@ export interface UserProfile {
   totalXp: number;
 }
 
+export interface AvatarProfile {
+  id: string;
+  gender: AvatarGender;
+  skinTone: AvatarSkinTone;
+  eyeColor: AvatarEyeColor;
+  hairColor: AvatarHairColor;
+  hairStyle: AvatarHairStyle;
+  beardStyle: AvatarBeardStyle;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AppSettings {
   id: string;
   theme: AppTheme;
@@ -68,6 +86,7 @@ export interface AppDataSnapshot {
   quests: Quest[];
   completionLogs: CompletionLog[];
   userProfile: UserProfile;
+  avatar: AvatarProfile | null;
   appSettings: AppSettings;
 }
 
@@ -91,6 +110,15 @@ export interface QuestFormValues {
   type: QuestType;
   difficulty: QuestDifficulty;
   rewardText: string;
+}
+
+export interface AvatarFormValues {
+  gender: AvatarGender;
+  skinTone: AvatarSkinTone;
+  eyeColor: AvatarEyeColor;
+  hairColor: AvatarHairColor;
+  hairStyle: AvatarHairStyle;
+  beardStyle: AvatarBeardStyle;
 }
 
 export interface StorageInitResult {

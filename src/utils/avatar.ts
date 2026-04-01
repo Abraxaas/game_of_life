@@ -45,6 +45,18 @@ function normalizeEnumValue<T extends string>(
     : fallback;
 }
 
+function normalizeHairStyle(value: unknown): AvatarHairStyle {
+  if (value === 'wave') {
+    return 'long';
+  }
+
+  return normalizeEnumValue<AvatarHairStyle>(
+    value,
+    VALID_AVATAR_VALUES.hairStyle,
+    DEFAULT_AVATAR_VALUES.hairStyle,
+  );
+}
+
 export function normalizeAvatarProfile(
   avatar?: PartialAvatarProfile | null,
 ): AvatarProfile | null {
@@ -76,11 +88,7 @@ export function normalizeAvatarProfile(
       VALID_AVATAR_VALUES.hairColor,
       DEFAULT_AVATAR_VALUES.hairColor,
     ),
-    hairStyle: normalizeEnumValue<AvatarHairStyle>(
-      avatar.hairStyle,
-      VALID_AVATAR_VALUES.hairStyle,
-      DEFAULT_AVATAR_VALUES.hairStyle,
-    ),
+    hairStyle: normalizeHairStyle(avatar.hairStyle),
     beardStyle: normalizeEnumValue<AvatarBeardStyle>(
       avatar.beardStyle,
       VALID_AVATAR_VALUES.beardStyle,

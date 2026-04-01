@@ -51,7 +51,6 @@ export const AVATAR_HAIR_STYLE_OPTIONS: Array<{
   label: string;
 }> = [
   { value: 'short', label: 'Короткая' },
-  { value: 'wave', label: 'Волна' },
   { value: 'long', label: 'Длинная' },
 ];
 

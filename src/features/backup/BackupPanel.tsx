@@ -90,6 +90,9 @@ export function BackupPanel({
         <p className="muted-text">
           Режим хранения: {storageKind === 'indexeddb' ? 'в браузере' : 'временный'}.
         </p>
+        <p className="muted-text">
+          Импорт принимает только JSON, созданный текущей clean-версией приложения.
+        </p>
       </section>
 
       <section className="panel">

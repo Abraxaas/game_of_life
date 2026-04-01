@@ -18,7 +18,7 @@ import type {
   ToastTone,
 } from '../types/domain';
 import { UI_PAGE_STORAGE_KEY, XP_BY_DIFFICULTY } from '../shared/constants';
-import { initializeStorage, normalizeSnapshot, persistSnapshot } from '../storage/appStorage';
+import { initializeStorage, persistSnapshot, prepareSnapshot } from '../storage/appStorage';
 import { createSeedSnapshot } from '../storage/seed';
 import { validateImportedSnapshot } from '../utils/importValidation';
 import { buildAvatarProfile } from '../utils/avatar';
@@ -189,7 +189,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     options?: CommitSnapshotOptions,
   ) {
     const previousSnapshot = snapshotRef.current;
-    const normalized = normalizeSnapshot(nextSnapshot);
+    const normalized = prepareSnapshot(nextSnapshot);
 
     snapshotRef.current = normalized;
     setSnapshot(normalized);
@@ -243,7 +243,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return false;
     }
 
-    const normalized = normalizeSnapshot(entry.snapshot);
+    const normalized = prepareSnapshot(entry.snapshot);
 
     snapshotRef.current = normalized;
     setSnapshot(normalized);
@@ -597,7 +597,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const exportedAt = new Date().toISOString();
-    const nextSnapshot = normalizeSnapshot({
+    const nextSnapshot = prepareSnapshot({
       ...currentSnapshot,
       appSettings: {
         ...currentSnapshot.appSettings,
@@ -642,7 +642,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return false;
     }
 
-    const nextSnapshot = normalizeSnapshot(validation.data);
+    const nextSnapshot = prepareSnapshot(validation.data);
     return commitSnapshot(nextSnapshot, {
       successMessage: 'Данные импортированы и сохранены в браузере.',
       errorMessage:

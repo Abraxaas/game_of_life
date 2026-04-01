@@ -1,17 +1,49 @@
+import { SNAPSHOT_SCHEMA_VERSION } from '../shared/constants';
+import {
+  AVATAR_BEARD_STYLE_OPTIONS,
+  AVATAR_EYE_COLOR_OPTIONS,
+  AVATAR_GENDER_OPTIONS,
+  AVATAR_HAIR_COLOR_OPTIONS,
+  AVATAR_HAIR_STYLE_OPTIONS,
+  AVATAR_SKIN_TONE_OPTIONS,
+} from '../shared/avatarConfig';
+import { STAT_DEFINITIONS } from '../shared/statConfig';
 import type {
   AppDataSnapshot,
   AppSettings,
+  AvatarBeardStyle,
+  AvatarEyeColor,
+  AvatarGender,
+  AvatarHairColor,
+  AvatarHairStyle,
   AvatarProfile,
+  AvatarSkinTone,
   CompletionLog,
   ImportValidationResult,
+  QuestType,
   Stat,
   UserProfile,
 } from '../types/domain';
-import { SNAPSHOT_SCHEMA_VERSION } from '../shared/constants';
-import {
-  normalizeQuestDifficulty,
-  normalizeQuestType,
-} from './quests';
+
+const VALID_STAT_KEYS = new Set(STAT_DEFINITIONS.map((definition) => definition.key));
+const VALID_AVATAR_GENDERS = new Set(
+  AVATAR_GENDER_OPTIONS.map((option) => option.value),
+);
+const VALID_AVATAR_SKIN_TONES = new Set(
+  AVATAR_SKIN_TONE_OPTIONS.map((option) => option.value),
+);
+const VALID_AVATAR_EYE_COLORS = new Set(
+  AVATAR_EYE_COLOR_OPTIONS.map((option) => option.value),
+);
+const VALID_AVATAR_HAIR_COLORS = new Set(
+  AVATAR_HAIR_COLOR_OPTIONS.map((option) => option.value),
+);
+const VALID_AVATAR_HAIR_STYLES = new Set(
+  AVATAR_HAIR_STYLE_OPTIONS.map((option) => option.value),
+);
+const VALID_AVATAR_BEARDS = new Set(
+  AVATAR_BEARD_STYLE_OPTIONS.map((option) => option.value),
+);
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -29,6 +61,15 @@ function isBoolean(value: unknown): value is boolean {
   return typeof value === 'boolean';
 }
 
+function isQuestType(value: unknown): value is QuestType {
+  return (
+    value === 'daily' ||
+    value === 'weekly' ||
+    value === 'monthly' ||
+    value === 'one_time'
+  );
+}
+
 function isStat(value: unknown): value is Stat {
   if (!isObject(value)) {
     return false;
@@ -37,6 +78,7 @@ function isStat(value: unknown): value is Stat {
   return (
     isString(value.id) &&
     isString(value.key) &&
+    VALID_STAT_KEYS.has(value.key) &&
     isString(value.name) &&
     isString(value.icon) &&
     isNumber(value.level) &&
@@ -44,6 +86,15 @@ function isStat(value: unknown): value is Stat {
     isString(value.createdAt) &&
     isString(value.updatedAt)
   );
+}
+
+function hasExpectedStatSet(stats: Stat[]) {
+  if (stats.length !== STAT_DEFINITIONS.length) {
+    return false;
+  }
+
+  const keys = new Set(stats.map((stat) => stat.key));
+  return STAT_DEFINITIONS.every((definition) => keys.has(definition.key));
 }
 
 function isAvatar(value: unknown): value is AvatarProfile {
@@ -54,17 +105,23 @@ function isAvatar(value: unknown): value is AvatarProfile {
   return (
     isString(value.id) &&
     isString(value.gender) &&
+    VALID_AVATAR_GENDERS.has(value.gender as AvatarGender) &&
     isString(value.skinTone) &&
+    VALID_AVATAR_SKIN_TONES.has(value.skinTone as AvatarSkinTone) &&
     isString(value.eyeColor) &&
+    VALID_AVATAR_EYE_COLORS.has(value.eyeColor as AvatarEyeColor) &&
     isString(value.hairColor) &&
+    VALID_AVATAR_HAIR_COLORS.has(value.hairColor as AvatarHairColor) &&
     isString(value.hairStyle) &&
+    VALID_AVATAR_HAIR_STYLES.has(value.hairStyle as AvatarHairStyle) &&
     isString(value.beardStyle) &&
+    VALID_AVATAR_BEARDS.has(value.beardStyle as AvatarBeardStyle) &&
     isString(value.createdAt) &&
     isString(value.updatedAt)
   );
 }
 
-function isQuest(value: unknown, schemaVersion: number) {
+function isQuest(value: unknown) {
   if (!isObject(value)) {
     return false;
   }
@@ -75,31 +132,23 @@ function isQuest(value: unknown, schemaVersion: number) {
     value.rewardText === undefined || isString(value.rewardText);
   const lastCompletedValid =
     value.lastCompletedAt === undefined || isString(value.lastCompletedAt);
-  const completionStateValid =
-    schemaVersion === 1
-      ? isBoolean(value.completedToday)
-      : value.completedInPeriod === undefined || isBoolean(value.completedInPeriod);
-  const typeValid =
-    schemaVersion === 1
-      ? value.type === 'one_time' || value.type === 'daily'
-      : value.type === 'one_time' ||
-        value.type === 'daily' ||
-        value.type === 'weekly' ||
-        value.type === 'monthly';
 
   return (
     isString(value.id) &&
     isString(value.title) &&
     descriptionValid &&
     isString(value.statKey) &&
-    typeValid &&
-    (value.difficulty === 'easy' || value.difficulty === 'medium' || value.difficulty === 'hard') &&
+    VALID_STAT_KEYS.has(value.statKey) &&
+    isQuestType(value.type) &&
+    (value.difficulty === 'easy' ||
+      value.difficulty === 'medium' ||
+      value.difficulty === 'hard') &&
     isNumber(value.xpReward) &&
     rewardValid &&
     isBoolean(value.isArchived) &&
     isString(value.createdAt) &&
     isString(value.updatedAt) &&
-    completionStateValid &&
+    isBoolean(value.completedInPeriod) &&
     lastCompletedValid &&
     isNumber(value.timesCompleted)
   );
@@ -116,6 +165,7 @@ function isCompletionLog(value: unknown): value is CompletionLog {
     isString(value.id) &&
     isString(value.questId) &&
     isString(value.statKey) &&
+    VALID_STAT_KEYS.has(value.statKey) &&
     isNumber(value.xpAwarded) &&
     isString(value.completedAt) &&
     noteValid
@@ -139,7 +189,7 @@ function isUserProfile(value: unknown): value is UserProfile {
   );
 }
 
-function isAppSettings(value: unknown, schemaVersion: number): value is AppSettings {
+function isAppSettings(value: unknown): value is AppSettings {
   if (!isObject(value)) {
     return false;
   }
@@ -149,64 +199,12 @@ function isAppSettings(value: unknown, schemaVersion: number): value is AppSetti
 
   return (
     isString(value.id) &&
-    isString(value.theme) &&
-    (schemaVersion === 1
-      ? isBoolean(value.showCompletedToday)
-      : isBoolean(value.showCompletedCurrentPeriod)) &&
+    value.theme === 'light' &&
+    isBoolean(value.showCompletedCurrentPeriod) &&
     isBoolean(value.enableConfirmations) &&
-    (schemaVersion === 1
-      ? true
-      : value.hasSeenOnboarding === undefined || isBoolean(value.hasSeenOnboarding)) &&
+    isBoolean(value.hasSeenOnboarding) &&
     lastBackupValid
   );
-}
-
-function migrateSnapshot(value: Record<string, unknown>): AppDataSnapshot {
-  const schemaVersion = value.schemaVersion as number;
-  const avatarValue = value.avatar;
-
-  return {
-    schemaVersion: SNAPSHOT_SCHEMA_VERSION,
-    stats: value.stats as Stat[],
-    quests: (value.quests as Record<string, unknown>[]).map((quest) => ({
-      id: quest.id as string,
-      title: quest.title as string,
-      description: quest.description as string | undefined,
-      statKey: quest.statKey as string,
-      type: normalizeQuestType(quest.type),
-      difficulty: normalizeQuestDifficulty(quest.difficulty),
-      xpReward: quest.xpReward as number,
-      rewardText: quest.rewardText as string | undefined,
-      isArchived: quest.isArchived as boolean,
-      createdAt: quest.createdAt as string,
-      updatedAt: quest.updatedAt as string,
-      completedInPeriod:
-        schemaVersion === 1
-          ? (quest.completedToday as boolean)
-          : ((quest.completedInPeriod as boolean | undefined) ?? false),
-      lastCompletedAt: quest.lastCompletedAt as string | undefined,
-      timesCompleted: quest.timesCompleted as number,
-    })),
-    completionLogs: value.completionLogs as CompletionLog[],
-    userProfile: value.userProfile as UserProfile,
-    avatar:
-      schemaVersion >= 3 && isAvatar(avatarValue)
-        ? avatarValue
-        : null,
-    appSettings: {
-      ...(value.appSettings as AppSettings),
-      showCompletedCurrentPeriod:
-        schemaVersion === 1
-          ? ((value.appSettings as Record<string, unknown>).showCompletedToday as boolean)
-          : ((value.appSettings as Record<string, unknown>)
-              .showCompletedCurrentPeriod as boolean),
-      hasSeenOnboarding:
-        schemaVersion === 1
-          ? false
-          : (((value.appSettings as Record<string, unknown>).hasSeenOnboarding as boolean | undefined) ??
-            false),
-    },
-  };
 }
 
 export function validateImportedSnapshot(
@@ -223,20 +221,17 @@ export function validateImportedSnapshot(
     };
   }
 
-  const schemaVersion = value.schemaVersion;
-
-  if (schemaVersion > SNAPSHOT_SCHEMA_VERSION) {
+  if (value.schemaVersion > SNAPSHOT_SCHEMA_VERSION) {
     return {
       ok: false,
       error: 'Файл создан в более новой версии приложения.',
     };
   }
 
-  if (schemaVersion < 1) {
+  if (value.schemaVersion !== SNAPSHOT_SCHEMA_VERSION) {
     return {
       ok: false,
-      error:
-        'Файл создан в слишком старой версии схемы. Автоматическая миграция недоступна.',
+      error: `Эта версия приложения импортирует только JSON схемы ${SNAPSHOT_SCHEMA_VERSION}. Старые резервные копии больше не мигрируются автоматически.`,
     };
   }
 
@@ -244,10 +239,11 @@ export function validateImportedSnapshot(
     return { ok: false, error: 'Раздел stats имеет неверную структуру.' };
   }
 
-  if (
-    !Array.isArray(value.quests) ||
-    !value.quests.every((quest) => isQuest(quest, schemaVersion))
-  ) {
+  if (!hasExpectedStatSet(value.stats)) {
+    return { ok: false, error: 'В файле указан неполный или лишний набор статов.' };
+  }
+
+  if (!Array.isArray(value.quests) || !value.quests.every(isQuest)) {
     return { ok: false, error: 'Раздел quests имеет неверную структуру.' };
   }
 
@@ -265,21 +261,16 @@ export function validateImportedSnapshot(
     return { ok: false, error: 'Раздел userProfile имеет неверную структуру.' };
   }
 
-  if (
-    schemaVersion >= 3 &&
-    value.avatar !== undefined &&
-    value.avatar !== null &&
-    !isAvatar(value.avatar)
-  ) {
+  if (value.avatar !== undefined && value.avatar !== null && !isAvatar(value.avatar)) {
     return { ok: false, error: 'Раздел avatar имеет неверную структуру.' };
   }
 
-  if (!isAppSettings(value.appSettings, schemaVersion)) {
+  if (!isAppSettings(value.appSettings)) {
     return { ok: false, error: 'Раздел appSettings имеет неверную структуру.' };
   }
 
   return {
     ok: true,
-    data: migrateSnapshot(value),
+    data: value as unknown as AppDataSnapshot,
   };
 }

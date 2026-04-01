@@ -1,5 +1,5 @@
 import { QUEST_TYPE_LABELS } from '../shared/constants';
-import type { Quest, QuestDifficulty, QuestType } from '../types/domain';
+import type { Quest, QuestType } from '../types/domain';
 import { isSameMonth, isSameWeek, isToday } from './date';
 
 export function isQuestType(value: unknown): value is QuestType {
@@ -9,18 +9,6 @@ export function isQuestType(value: unknown): value is QuestType {
     value === 'monthly' ||
     value === 'one_time'
   );
-}
-
-export function normalizeQuestType(value: unknown): QuestType {
-  return isQuestType(value) ? value : 'daily';
-}
-
-export function normalizeQuestDifficulty(value: unknown): QuestDifficulty {
-  if (value === 'easy' || value === 'medium' || value === 'hard') {
-    return value;
-  }
-
-  return 'easy';
 }
 
 export function isRecurringQuestType(

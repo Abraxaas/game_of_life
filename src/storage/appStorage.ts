@@ -8,21 +8,14 @@ import { STAT_DEFINITIONS } from '../shared/statConfig';
 import type {
   AppDataSnapshot,
   AppSettings,
-  AvatarProfile,
   Quest,
-  QuestDifficulty,
   Stat,
   StorageInitResult,
   StorageKind,
   UserProfile,
 } from '../types/domain';
 import { createId } from '../utils/id';
-import { normalizeAvatarProfile } from '../utils/avatar';
-import {
-  isQuestCompletedInCurrentPeriod,
-  normalizeQuestDifficulty,
-  normalizeQuestType,
-} from '../utils/quests';
+import { isQuestCompletedInCurrentPeriod } from '../utils/quests';
 import { calculateLevelProgress } from '../utils/xp';
 import {
   hasIndexedDbSupport,
@@ -43,22 +36,8 @@ function cloneSnapshot(snapshot: AppDataSnapshot) {
   return structuredClone(snapshot);
 }
 
-interface LegacyQuestSnapshot extends Partial<Quest> {
-  completedToday?: boolean;
-}
-
-interface LegacyAppSettingsSnapshot extends Partial<AppSettings> {
-  showCompletedToday?: boolean;
-}
-
-interface LegacyAppDataSnapshot extends Omit<AppDataSnapshot, 'avatar' | 'appSettings' | 'quests'> {
-  avatar?: AvatarProfile | null;
-  appSettings: LegacyAppSettingsSnapshot;
-  quests: LegacyQuestSnapshot[];
-}
-
 function rebuildStat(
-  stat: Partial<Stat> | undefined,
+  stat: Stat | undefined,
   fallback: { key: string; name: string; icon: string },
 ): Stat {
   const nowIso = new Date().toISOString();
@@ -67,45 +46,39 @@ function rebuildStat(
 
   return {
     id: stat?.id ?? createId(),
-    key: stat?.key ?? fallback.key,
-    name: stat?.name ?? fallback.name,
-    icon: stat?.icon ?? fallback.icon,
+    key: fallback.key,
+    name: fallback.name,
+    icon: fallback.icon,
     level: levelProgress.level,
     xp,
     createdAt: stat?.createdAt ?? nowIso,
-    updatedAt: nowIso,
+    updatedAt: stat?.updatedAt ?? nowIso,
   };
 }
 
-function rebuildQuest(quest: LegacyQuestSnapshot): Quest {
-  const nowIso = new Date().toISOString();
-  const difficulty: QuestDifficulty = normalizeQuestDifficulty(quest.difficulty);
-  const type = normalizeQuestType(quest.type);
-
+function rebuildQuest(quest: Quest): Quest {
   return {
-    id: quest.id ?? createId(),
-    title: quest.title?.trim() || 'Без названия',
+    ...quest,
+    title: quest.title.trim() || 'Без названия',
     description: quest.description?.trim() || undefined,
-    statKey: quest.statKey ?? 'discipline',
-    type,
-    difficulty,
-    xpReward: XP_BY_DIFFICULTY[difficulty],
     rewardText: quest.rewardText?.trim() || undefined,
-    isArchived: Boolean(quest.isArchived),
-    createdAt: quest.createdAt ?? nowIso,
-    updatedAt: quest.updatedAt ?? nowIso,
-    completedInPeriod: isQuestCompletedInCurrentPeriod(type, quest.lastCompletedAt),
-    lastCompletedAt: quest.lastCompletedAt,
-    timesCompleted: Math.max(0, quest.timesCompleted ?? 0),
+    xpReward: XP_BY_DIFFICULTY[quest.difficulty],
+    completedInPeriod: isQuestCompletedInCurrentPeriod(
+      quest.type,
+      quest.lastCompletedAt,
+    ),
   };
 }
 
-function buildProfile(stats: Stat[], currentProfile?: UserProfile): UserProfile {
+function buildProfile(
+  stats: Stat[],
+  currentProfile?: UserProfile,
+): UserProfile {
   const nowIso = new Date().toISOString();
 
   return {
     id: currentProfile?.id ?? USER_PROFILE_ID,
-    username: currentProfile?.username,
+    username: currentProfile?.username?.trim() || undefined,
     createdAt: currentProfile?.createdAt ?? nowIso,
     updatedAt: nowIso,
     totalLevel: stats.reduce((sum, stat) => sum + stat.level, 0),
@@ -113,52 +86,38 @@ function buildProfile(stats: Stat[], currentProfile?: UserProfile): UserProfile 
   };
 }
 
-function buildSettings(settings?: LegacyAppSettingsSnapshot): AppSettings {
-  const showCompletedCurrentPeriod =
-    settings?.showCompletedCurrentPeriod ??
-    settings?.showCompletedToday ??
-    DEFAULT_APP_SETTINGS.showCompletedCurrentPeriod;
-
+function buildSettings(settings?: AppSettings): AppSettings {
   return {
     ...DEFAULT_APP_SETTINGS,
     ...settings,
-    showCompletedCurrentPeriod,
-    hasSeenOnboarding:
-      settings?.hasSeenOnboarding ?? DEFAULT_APP_SETTINGS.hasSeenOnboarding,
     id: DEFAULT_APP_SETTINGS.id,
+    showCompletedCurrentPeriod:
+      settings?.showCompletedCurrentPeriod ??
+      DEFAULT_APP_SETTINGS.showCompletedCurrentPeriod,
+    enableConfirmations:
+      settings?.enableConfirmations ??
+      DEFAULT_APP_SETTINGS.enableConfirmations,
+    hasSeenOnboarding:
+      settings?.hasSeenOnboarding ??
+      DEFAULT_APP_SETTINGS.hasSeenOnboarding,
   };
 }
 
-export function normalizeSnapshot(snapshot: LegacyAppDataSnapshot): AppDataSnapshot {
+export function prepareSnapshot(snapshot: AppDataSnapshot): AppDataSnapshot {
   const knownStats = new Map(snapshot.stats.map((stat) => [stat.key, stat]));
-
-  const configuredStats = STAT_DEFINITIONS.map((definition) =>
+  const stats = STAT_DEFINITIONS.map((definition) =>
     rebuildStat(knownStats.get(definition.key), definition),
-  );
-
-  const extraStats = snapshot.stats
-    .filter((stat) => !STAT_DEFINITIONS.some((definition) => definition.key === stat.key))
-    .map((stat) =>
-      rebuildStat(stat, {
-        key: stat.key,
-        name: stat.name,
-        icon: stat.icon,
-      }),
-    );
-
-  const stats = [...configuredStats, ...extraStats];
-  const quests = snapshot.quests.map(rebuildQuest);
-  const completionLogs = [...snapshot.completionLogs].sort((left, right) =>
-    right.completedAt.localeCompare(left.completedAt),
   );
 
   return {
     schemaVersion: SNAPSHOT_SCHEMA_VERSION,
     stats,
-    quests,
-    completionLogs,
+    quests: snapshot.quests.map(rebuildQuest),
+    completionLogs: [...snapshot.completionLogs].sort((left, right) =>
+      right.completedAt.localeCompare(left.completedAt),
+    ),
     userProfile: buildProfile(stats, snapshot.userProfile),
-    avatar: normalizeAvatarProfile(snapshot.avatar),
+    avatar: snapshot.avatar ?? null,
     appSettings: buildSettings(snapshot.appSettings),
   };
 }
@@ -197,15 +156,16 @@ class IndexedDbStorage implements StorageAdapter {
       .objectStore(STORE_NAMES.appSettings)
       .getAll();
 
-    const [stats, quests, completionLogs, profiles, avatars, settings] = await Promise.all([
-      requestToPromise(statsRequest),
-      requestToPromise(questsRequest),
-      requestToPromise(logsRequest),
-      requestToPromise(profileRequest),
-      requestToPromise(avatarRequest),
-      requestToPromise(settingsRequest),
-      transactionToPromise(transaction),
-    ]);
+    const [stats, quests, completionLogs, profiles, avatars, settings] =
+      await Promise.all([
+        requestToPromise(statsRequest),
+        requestToPromise(questsRequest),
+        requestToPromise(logsRequest),
+        requestToPromise(profileRequest),
+        requestToPromise(avatarRequest),
+        requestToPromise(settingsRequest),
+        transactionToPromise(transaction),
+      ]);
 
     if (stats.length === 0 && profiles.length === 0) {
       return createSeedSnapshot();
@@ -215,7 +175,7 @@ class IndexedDbStorage implements StorageAdapter {
 
     return {
       schemaVersion: SNAPSHOT_SCHEMA_VERSION,
-      stats,
+      stats: stats.length > 0 ? stats : seed.stats,
       quests,
       completionLogs,
       userProfile: profiles[0] ?? seed.userProfile,
@@ -294,7 +254,7 @@ export async function initializeStorage(): Promise<StorageInitResult> {
   if (!hasIndexedDbSupport()) {
     const storage = new MemoryStorage();
     activeStoragePromise = Promise.resolve(storage);
-    const snapshot = normalizeSnapshot(await storage.load());
+    const snapshot = prepareSnapshot(await storage.load());
 
     await storage.save(snapshot);
 
@@ -309,7 +269,7 @@ export async function initializeStorage(): Promise<StorageInitResult> {
   try {
     const storage = new IndexedDbStorage();
     activeStoragePromise = Promise.resolve(storage);
-    const snapshot = normalizeSnapshot(await storage.load());
+    const snapshot = prepareSnapshot(await storage.load());
 
     await storage.save(snapshot);
 
@@ -320,7 +280,7 @@ export async function initializeStorage(): Promise<StorageInitResult> {
   } catch {
     const storage = new MemoryStorage();
     activeStoragePromise = Promise.resolve(storage);
-    const snapshot = normalizeSnapshot(await storage.load());
+    const snapshot = prepareSnapshot(await storage.load());
 
     await storage.save(snapshot);
 
@@ -355,5 +315,5 @@ async function getActiveStorage() {
 
 export async function persistSnapshot(snapshot: AppDataSnapshot) {
   const storage = await getActiveStorage();
-  await storage.save(normalizeSnapshot(snapshot));
+  await storage.save(prepareSnapshot(snapshot));
 }

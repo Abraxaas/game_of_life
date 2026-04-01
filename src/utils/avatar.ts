@@ -1,20 +1,11 @@
 import {
-  AVATAR_BEARD_STYLE_OPTIONS,
   AVATAR_EYE_COLOR_OPTIONS,
-  AVATAR_GENDER_OPTIONS,
   AVATAR_HAIR_COLOR_OPTIONS,
-  AVATAR_HAIR_STYLE_OPTIONS,
   AVATAR_SKIN_TONE_OPTIONS,
   DASHBOARD_STAT_COLORS,
-  DEFAULT_AVATAR_VALUES,
 } from '../shared/avatarConfig';
 import type {
-  AvatarBeardStyle,
-  AvatarEyeColor,
   AvatarFormValues,
-  AvatarGender,
-  AvatarHairColor,
-  AvatarHairStyle,
   AvatarProfile,
   CompletionLog,
   Quest,
@@ -24,93 +15,18 @@ import type {
 import { createId } from './id';
 import { calculateQuestStreak } from './streaks';
 
-interface PartialAvatarProfile extends Partial<AvatarProfile> {}
-
-const VALID_AVATAR_VALUES = {
-  gender: new Set(AVATAR_GENDER_OPTIONS.map((option) => option.value)),
-  skinTone: new Set(AVATAR_SKIN_TONE_OPTIONS.map((option) => option.value)),
-  eyeColor: new Set(AVATAR_EYE_COLOR_OPTIONS.map((option) => option.value)),
-  hairColor: new Set(AVATAR_HAIR_COLOR_OPTIONS.map((option) => option.value)),
-  hairStyle: new Set(AVATAR_HAIR_STYLE_OPTIONS.map((option) => option.value)),
-  beardStyle: new Set(AVATAR_BEARD_STYLE_OPTIONS.map((option) => option.value)),
-};
-
-function normalizeEnumValue<T extends string>(
-  value: unknown,
-  allowedValues: Set<T>,
-  fallback: T,
-) {
-  return typeof value === 'string' && allowedValues.has(value as T)
-    ? (value as T)
-    : fallback;
-}
-
-function normalizeHairStyle(value: unknown): AvatarHairStyle {
-  if (value === 'wave') {
-    return 'long';
-  }
-
-  return normalizeEnumValue<AvatarHairStyle>(
-    value,
-    VALID_AVATAR_VALUES.hairStyle,
-    DEFAULT_AVATAR_VALUES.hairStyle,
-  );
-}
-
-export function normalizeAvatarProfile(
-  avatar?: PartialAvatarProfile | null,
-): AvatarProfile | null {
-  if (!avatar) {
-    return null;
-  }
-
-  const nowIso = new Date().toISOString();
-
-  return {
-    id: typeof avatar.id === 'string' ? avatar.id : createId(),
-    gender: normalizeEnumValue<AvatarGender>(
-      avatar.gender,
-      VALID_AVATAR_VALUES.gender,
-      DEFAULT_AVATAR_VALUES.gender,
-    ),
-    skinTone: normalizeEnumValue(
-      avatar.skinTone,
-      VALID_AVATAR_VALUES.skinTone,
-      DEFAULT_AVATAR_VALUES.skinTone,
-    ),
-    eyeColor: normalizeEnumValue<AvatarEyeColor>(
-      avatar.eyeColor,
-      VALID_AVATAR_VALUES.eyeColor,
-      DEFAULT_AVATAR_VALUES.eyeColor,
-    ),
-    hairColor: normalizeEnumValue<AvatarHairColor>(
-      avatar.hairColor,
-      VALID_AVATAR_VALUES.hairColor,
-      DEFAULT_AVATAR_VALUES.hairColor,
-    ),
-    hairStyle: normalizeHairStyle(avatar.hairStyle),
-    beardStyle: normalizeEnumValue<AvatarBeardStyle>(
-      avatar.beardStyle,
-      VALID_AVATAR_VALUES.beardStyle,
-      DEFAULT_AVATAR_VALUES.beardStyle,
-    ),
-    createdAt: typeof avatar.createdAt === 'string' ? avatar.createdAt : nowIso,
-    updatedAt: typeof avatar.updatedAt === 'string' ? avatar.updatedAt : nowIso,
-  };
-}
-
 export function buildAvatarProfile(
   values: AvatarFormValues,
   currentAvatar?: AvatarProfile | null,
-) {
+): AvatarProfile {
   const nowIso = new Date().toISOString();
 
-  return normalizeAvatarProfile({
-    id: currentAvatar?.id,
+  return {
+    id: currentAvatar?.id ?? createId(),
+    ...values,
     createdAt: currentAvatar?.createdAt ?? nowIso,
     updatedAt: nowIso,
-    ...values,
-  });
+  };
 }
 
 export function getAvatarStage(level: number) {

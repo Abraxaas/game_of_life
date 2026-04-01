@@ -5,9 +5,9 @@ export const APP_DESCRIPTION =
   'Спокойная ролевая прокачка';
 export const APP_STAGE_LABEL = 'Онлайн-версия 1.1';
 
-export const STORAGE_DB_NAME = 'routine-rpg-mvp';
-export const STORAGE_DB_VERSION = 2;
-export const SNAPSHOT_SCHEMA_VERSION = 3;
+export const STORAGE_DB_NAME = 'routine-rpg-clean';
+export const STORAGE_DB_VERSION = 1;
+export const SNAPSHOT_SCHEMA_VERSION = 4;
 
 export const USER_PROFILE_ID = 'user-profile';
 export const APP_SETTINGS_ID = 'app-settings';

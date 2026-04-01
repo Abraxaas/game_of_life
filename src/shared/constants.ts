@@ -2,7 +2,7 @@ import type { AppSettings, QuestDifficulty, QuestType } from '../types/domain';
 
 export const APP_NAME = 'Игра жизни';
 export const APP_DESCRIPTION =
-  'Онлайн-версия 1.1 для спокойной геймификации рутины с ежедневными, еженедельными, ежемесячными и разовыми квестами.';
+  'Спокойная ролевая прокачка';
 export const APP_STAGE_LABEL = 'Онлайн-версия 1.1';
 
 export const STORAGE_DB_NAME = 'routine-rpg-mvp';

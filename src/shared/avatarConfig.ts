@@ -21,7 +21,7 @@ export const AVATAR_SKIN_TONE_OPTIONS: Array<{
 }> = [
   { value: 'light', label: 'Светлая', color: '#f1d0b5' },
   { value: 'medium', label: 'Средняя', color: '#d5a37d' },
-  { value: 'deep', label: 'Глубокая', color: '#8d5d42' },
+  { value: 'deep', label: 'Темная', color: '#8d5d42' },
 ];
 
 export const AVATAR_EYE_COLOR_OPTIONS: Array<{
